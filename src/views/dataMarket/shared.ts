@@ -1,7 +1,7 @@
 import type { ApplicationType, DatasetVO } from '@/api/dataMarket/types'
 
 export const APPLICATION_TYPE_OPTIONS: Array<{ label: string; value: ApplicationType }> = [
-  { label: '新建申请', value: 'NEW' },
+  { label: '新建申请', value: 'CREATE' },
   { label: '变更申请', value: 'CHANGE' },
   { label: '续期申请', value: 'RENEW' },
   { label: '停用申请', value: 'DEACTIVATE' }

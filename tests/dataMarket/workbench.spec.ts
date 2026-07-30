@@ -12,7 +12,7 @@ import WorkflowConfigPage from '@/views/dataMarket/workflowConfig/index.vue'
 describe('data market workbench behavior', () => {
   it('maps all lifecycle application types to selectable workflow options', () => {
     expect(APPLICATION_TYPE_OPTIONS).toEqual([
-      { label: '新建申请', value: 'NEW' },
+      { label: '新建申请', value: 'CREATE' },
       { label: '变更申请', value: 'CHANGE' },
       { label: '续期申请', value: 'RENEW' },
       { label: '停用申请', value: 'DEACTIVATE' }

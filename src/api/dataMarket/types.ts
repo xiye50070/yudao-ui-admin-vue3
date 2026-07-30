@@ -73,7 +73,7 @@ export interface AccessClearanceRule extends DatasetAclRule {
   enabled: boolean
 }
 
-export type ApplicationType = 'NEW' | 'CHANGE' | 'RENEW' | 'DEACTIVATE'
+export type ApplicationType = 'CREATE' | 'CHANGE' | 'RENEW' | 'DEACTIVATE'
 
 export interface WorkflowConfigVO {
   applicationType?: ApplicationType

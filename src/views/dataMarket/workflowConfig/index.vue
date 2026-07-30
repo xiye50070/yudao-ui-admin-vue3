@@ -36,7 +36,7 @@ import { APPLICATION_TYPE_OPTIONS } from '../shared'
 import { useMessage } from '@/hooks/web/useMessage'
 defineOptions({ name: 'DataMarketWorkflowConfig' })
 const message = useMessage()
-const applicationType = ref<ApplicationType>('NEW')
+const applicationType = ref<ApplicationType>('CREATE')
 const formRef = ref<any>()
 const form = reactive<WorkflowConfigVO>({
   processDefinitionKey: '',
