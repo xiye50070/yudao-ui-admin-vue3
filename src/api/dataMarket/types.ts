@@ -253,8 +253,8 @@ export interface ApiCreateReq {
   name: string
   ownerUserId: number
   description?: string
-  effectiveAt?: string
-  expiresAt?: string
+  effectiveAt?: number
+  expiresAt?: number
 }
 export interface ApiVersionCreateReq {
   versionNo: string
@@ -286,8 +286,8 @@ export interface RuntimeBindingReq {
 export interface CredentialAuthorization {
   apiVersionId: number
   status: 'ACTIVE' | 'SUSPENDED' | 'EXPIRED' | 'REVOKED'
-  effectiveAt?: string
-  expiresAt?: string
+  effectiveAt?: number
+  expiresAt?: number
 }
 export interface CredentialCreateReq {
   deliveryId: number
@@ -297,13 +297,13 @@ export interface CredentialCreateReq {
   appKey: string
   appSecret: string
   authorizations: CredentialAuthorization[]
-  effectiveAt?: string
-  expiresAt?: string
+  effectiveAt?: number
+  expiresAt?: number
 }
 export interface LifecycleExecuteReq {
   recentCallSummary: string
   confirmedImpactSummary: string
-  actualEffectiveAt: string
+  actualEffectiveAt: number
   actionDetail: string
   targetApiVersionId?: number
   affectedCredentialIds?: number[]

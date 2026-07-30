@@ -119,6 +119,80 @@ describe('data-market management delivery contracts', () => {
     )
   })
 
+  it('serializes every delivery datetime input as epoch milliseconds on the wire', () => {
+    DeliveryApi.createDeliveredApi(1, {
+      name: 'orders',
+      ownerUserId: 2,
+      effectiveAt: '2026-08-01T00:00:00+08:00',
+      expiresAt: '2026-12-31T23:59:00+08:00'
+    } as never)
+    DeliveryApi.createCredential({
+      deliveryId: 1,
+      apiId: 2,
+      name: 'orders-client',
+      authType: 'APP_KEY_SECRET',
+      appKey: 'key',
+      appSecret: 'secret',
+      effectiveAt: '2026-08-01T00:00:00+08:00',
+      expiresAt: '2026-12-31T23:59:00+08:00',
+      authorizations: [
+        {
+          apiVersionId: 3,
+          status: 'ACTIVE',
+          effectiveAt: '2026-08-01T00:00:00+08:00',
+          expiresAt: '2026-12-31T23:59:00+08:00'
+        }
+      ]
+    } as never)
+    DeliveryApi.completeDeliveryTask(1, 'API_CONFIG', {
+      description: 'ready',
+      completedAt: '2026-09-01T08:30:00+08:00'
+    } as never)
+    DeliveryApi.executeLifecycleApplication(1, {
+      recentCallSummary: '正常',
+      confirmedImpactSummary: '已确认',
+      actualEffectiveAt: '2026-09-01T08:30:00+08:00',
+      actionDetail: '执行'
+    } as never)
+
+    expect(request.post).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        data: expect.objectContaining({
+          effectiveAt: 1785513600000,
+          expiresAt: 1798732740000
+        })
+      })
+    )
+    expect(request.post).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        data: expect.objectContaining({
+          effectiveAt: 1785513600000,
+          expiresAt: 1798732740000,
+          authorizations: [
+            expect.objectContaining({
+              effectiveAt: 1785513600000,
+              expiresAt: 1798732740000
+            })
+          ]
+        })
+      })
+    )
+    expect(request.post).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({
+        data: { description: 'ready', completedAt: 1788222600000 }
+      })
+    )
+    expect(request.post).toHaveBeenNthCalledWith(
+      4,
+      expect.objectContaining({
+        data: expect.objectContaining({ actualEffectiveAt: 1788222600000 })
+      })
+    )
+  })
+
   it('puts credential authorizations with required version zero', () => {
     DeliveryApi.updateCredentialAuthorizations({ id: 9, lockVersion: 0 }, [
       { apiVersionId: 31, status: 'ACTIVE' }

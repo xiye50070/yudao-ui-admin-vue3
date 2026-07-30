@@ -187,6 +187,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useWindowSize } from '@vueuse/core'
 import { useRouter } from 'vue-router'
 import * as DeliveryApi from '@/api/dataMarket/delivery'
+import { toEpochMillis } from '@/api/dataMarket/datetime'
 import type {
   ApplicationDetailVO,
   ApplicationSummaryVO,
@@ -280,7 +281,7 @@ const execute = async () => {
     await DeliveryApi.executeLifecycleApplication(form.applicationId, {
       recentCallSummary: form.recentCallSummary,
       confirmedImpactSummary: form.confirmedImpactSummary,
-      actualEffectiveAt: form.actualEffectiveAt,
+      actualEffectiveAt: toEpochMillis(form.actualEffectiveAt)!,
       actionDetail: form.actionDetail,
       targetApiVersionId: form.targetApiVersionId,
       affectedCredentialIds: affectedCredentialIds.value.map(Number).filter(Number.isInteger),

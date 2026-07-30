@@ -1,4 +1,5 @@
 import request from '@/config/axios'
+import { toEpochMillis } from './datetime'
 import type {
   ApiCreateReq,
   ApiVersionCreateReq,
@@ -54,7 +55,11 @@ export const createDeliveredApi = (
 ) =>
   request.post<number>({
     url: `${management}/deliveries/${deliveryId}/apis`,
-    data,
+    data: {
+      ...data,
+      effectiveAt: toEpochMillis(data.effectiveAt),
+      expiresAt: toEpochMillis(data.expiresAt)
+    },
     headers: commandHeaders(idempotencyKey)
   })
 export const createApiVersion = (
@@ -79,18 +84,27 @@ export const updateRuntimeBinding = (
 export const completeDeliveryTask = (
   deliveryId: number,
   stage: 'DELIVERY_PLAN' | 'API_CONFIG' | 'CREDENTIAL_CONFIG' | 'DOCUMENTATION',
-  data: { description: string; attachmentFileIds?: number[]; completedAt?: string },
+  data: { description: string; attachmentFileIds?: number[]; completedAt?: number },
   idempotencyKey?: string
 ) =>
   request.post({
     url: `${management}/deliveries/${deliveryId}/tasks/${stage}/complete`,
-    data,
+    data: { ...data, completedAt: toEpochMillis(data.completedAt) },
     headers: commandHeaders(idempotencyKey)
   })
 export const createCredential = (data: CredentialCreateReq, idempotencyKey?: string) =>
   request.post<number>({
     url: `${management}/credentials`,
-    data,
+    data: {
+      ...data,
+      effectiveAt: toEpochMillis(data.effectiveAt),
+      expiresAt: toEpochMillis(data.expiresAt),
+      authorizations: data.authorizations.map((authorization) => ({
+        ...authorization,
+        effectiveAt: toEpochMillis(authorization.effectiveAt),
+        expiresAt: toEpochMillis(authorization.expiresAt)
+      }))
+    },
     headers: commandHeaders(idempotencyKey)
   })
 export const updateCredentialAuthorizations = (
@@ -129,6 +143,6 @@ export const executeLifecycleApplication = (
 ) =>
   request.post({
     url: `${management}/lifecycle-applications/${applicationId}/execute`,
-    data,
+    data: { ...data, actualEffectiveAt: toEpochMillis(data.actualEffectiveAt) },
     headers: commandHeaders(idempotencyKey)
   })
