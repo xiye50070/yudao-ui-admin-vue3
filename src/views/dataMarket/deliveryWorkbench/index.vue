@@ -6,6 +6,37 @@
       :closable="false"
   /></ContentWrap>
   <ContentWrap
+    ><el-form :inline="true"
+      ><el-form-item label="申请 ID"
+        ><el-input-number v-model="applicationId" :min="1" /></el-form-item
+      ><el-form-item
+        ><el-button
+          v-hasPermi="['data-market:application:management-query']"
+          type="primary"
+          :loading="restoreLoading"
+          @click="loadDeliveryWorkbench"
+          >加载交付工作台</el-button
+        ></el-form-item
+      ></el-form
+    ><el-alert
+      v-if="workbench"
+      :title="`已恢复交付 ${workbench.deliveryNo}（${workbench.status}），${workbench.apis.length} 个 API`"
+      type="success"
+      :closable="false"
+      class="mb-12px"
+    />
+    <el-table v-if="workbench" :data="workbench.apis" size="small"
+      ><el-table-column prop="apiNo" label="API 编号" /><el-table-column
+        prop="name"
+        label="API 名称"
+      /><el-table-column prop="status" label="状态" /><el-table-column label="版本数" width="90"
+        ><template #default="{ row }">{{ row.versions.length }}</template></el-table-column
+      ><el-table-column label="凭证数" width="90"
+        ><template #default="{ row }">{{ row.credentials.length }}</template></el-table-column
+      ></el-table
+    ></ContentWrap
+  >
+  <ContentWrap
     ><el-tabs v-model="tab"
       ><el-tab-pane label="创建 API" name="api"
         ><el-form :model="apiForm" label-width="100px" class="max-w-600px"
@@ -190,15 +221,26 @@
   >
 </template>
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import * as DeliveryApi from '@/api/dataMarket/delivery'
-import type { ApiVersionCreateReq } from '@/api/dataMarket/types'
+import type {
+  ApiVersionCreateReq,
+  CredentialCreateReq,
+  DeliveryWorkbenchVO,
+  RuntimeBindingReq
+} from '@/api/dataMarket/types'
 import { useMessage } from '@/hooks/web/useMessage'
+import { selectDeliveryWorkbenchState } from './restore'
 import { validateApiVersionDraft } from './validation'
 import { buildApiVersionCreateRequest } from './versionDraft'
 defineOptions({ name: 'DataMarketDeliveryWorkbench' })
 const message = useMessage()
+const route = useRoute()
 const tab = ref('api')
+const applicationId = ref<number>()
+const workbench = ref<DeliveryWorkbenchVO>()
+const restoreLoading = ref(false)
 const deliveryId = ref<number>()
 const apiId = ref<number>()
 const apiVersionId = ref<number>()
@@ -242,17 +284,45 @@ const binding = reactive({
   timeoutMs: 10000,
   tlsVerify: true,
   debugEnabled: false,
-  status: 'ENABLED' as const
+  status: 'ENABLED' as RuntimeBindingReq['status']
 })
 const credential = reactive({
   deliveryId: undefined as number | undefined,
   apiId: undefined as number | undefined,
   name: '',
-  authType: 'APP_KEY_SECRET' as const,
+  authType: 'APP_KEY_SECRET' as CredentialCreateReq['authType'],
   appKey: ''
 })
 const requireId = (id: number | undefined, label: string) =>
   id || (message.warning(`请填写${label}`), undefined)
+const loadDeliveryWorkbench = async () => {
+  const id = requireId(applicationId.value, '申请 ID')
+  if (!id) return
+  restoreLoading.value = true
+  try {
+    const aggregate = await DeliveryApi.getApplicationDelivery(id)
+    const state = selectDeliveryWorkbenchState(aggregate)
+    workbench.value = aggregate
+    applicationId.value = state.applicationId
+    deliveryId.value = state.deliveryId
+    apiId.value = state.apiId
+    apiVersionId.value = state.apiVersionId
+    authorizationVersionId.value = state.authorizationVersionId
+    environment.value = state.environment
+    stage.value = state.stage
+    taskDescription.value = state.taskDescription
+    Object.assign(versionForm, state.version)
+    versionDocument.value = JSON.stringify(state.versionDocument, null, 2)
+    rateLimitPolicyDocument.value = JSON.stringify(state.rateLimitPolicy, null, 2)
+    networkPolicyDocument.value = JSON.stringify(state.networkPolicy, null, 2)
+    lineages.value = state.lineage
+    Object.assign(binding, state.binding)
+    Object.assign(credential, state.credential)
+    clearSecret()
+  } finally {
+    restoreLoading.value = false
+  }
+}
 const addLineage = () => {
   if (!lineageSourceId.value) return message.warning('请填写血缘来源 ID')
   lineages.value.push({
@@ -363,4 +433,10 @@ const submitAcceptance = async () => {
   await DeliveryApi.submitDeliveryAcceptance(id, taskDescription.value)
   message.success('已提交统一验收')
 }
+onMounted(() => {
+  const routeApplicationId = Number(route.query.applicationId ?? route.params.applicationId)
+  if (!Number.isInteger(routeApplicationId) || routeApplicationId <= 0) return
+  applicationId.value = routeApplicationId
+  void loadDeliveryWorkbench()
+})
 </script>

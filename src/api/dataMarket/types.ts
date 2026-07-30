@@ -249,6 +249,105 @@ export interface DeliveryCreateReq {
   ownerUserId: number
   taskAssignees?: Record<string, number>
 }
+export interface DeliveryTaskVO {
+  id: number
+  stage: string
+  status: string
+  assigneeUserId: number
+  description: string | null
+  startedAt: number | null
+  completedAt: number | null
+  displayOrder: number
+}
+export interface DeliveryRuntimeBindingVO {
+  id: number
+  environment: string
+  upstreamTargetRef: string
+  timeoutMs: number | null
+  tlsVerify: boolean
+  debugEnabled: boolean
+  status: string
+  lockVersion: number
+}
+export interface DeliveryLineageVO {
+  id: number
+  sourceType: string
+  sourceId: number
+  role: string
+  description: string | null
+}
+export interface DeliveryApiVersionVO {
+  id: number
+  versionNo: string
+  status: string
+  method: string
+  publicBaseUrl: string
+  requestPath: string
+  authType: string
+  contentType: string
+  openapiDocument: Record<string, unknown>
+  rateLimitPolicy: Record<string, unknown>
+  networkPolicy: Record<string, unknown>
+  requestDescription: string | null
+  responseDescription: string | null
+  successDescription: string | null
+  failureDescription: string | null
+  publishedAt: number | null
+  runtimeBindings: DeliveryRuntimeBindingVO[]
+  lineage: DeliveryLineageVO[]
+}
+export interface DeliveryCredentialAuthorizationVO {
+  id: number
+  apiId: number
+  apiVersionId: number
+  effectiveAt: number | null
+  expiresAt: number | null
+  status: string
+}
+export interface DeliveryCredentialVO {
+  id: number
+  deliveryId: number
+  apiId: number
+  credentialNo: string
+  name: string
+  authType: string
+  appKey: string | null
+  secretMasked: string
+  status: string
+  effectiveAt: number | null
+  expiresAt: number | null
+  configuredBy: number | null
+  lockVersion: number
+  authorizations: DeliveryCredentialAuthorizationVO[]
+}
+export interface DeliveredApiVO {
+  id: number
+  apiNo: string
+  name: string
+  description: string | null
+  status: string
+  deliveryId: number
+  currentVersionId: number | null
+  ownerUserId: number
+  effectiveAt: number | null
+  expiresAt: number | null
+  lockVersion: number
+  relationType: string | null
+  deliveryVersionId: number | null
+  versions: DeliveryApiVersionVO[]
+  credentials: DeliveryCredentialVO[]
+}
+export interface DeliveryWorkbenchVO {
+  id: number
+  applicationId: number
+  deliveryNo: string
+  status: string
+  planDescription: string | null
+  ownerUserId: number
+  lockVersion: number
+  tasks: DeliveryTaskVO[]
+  apis: DeliveredApiVO[]
+}
 export interface ApiCreateReq {
   name: string
   ownerUserId: number

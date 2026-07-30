@@ -9,6 +9,7 @@ import type {
   CredentialAuthorization,
   CredentialCreateReq,
   DeliveryCreateReq,
+  DeliveryWorkbenchVO,
   LifecycleExecuteReq,
   PageParam,
   PageResult,
@@ -33,6 +34,10 @@ export const getApplication = (applicationId: number) =>
 export const getApplicationTimeline = (applicationId: number) =>
   request.get<TimelineItem[]>({
     url: `${management}/applications/${applicationId}/timeline`
+  })
+export const getApplicationDelivery = (applicationId: number) =>
+  request.get<DeliveryWorkbenchVO>({
+    url: `${management}/applications/${applicationId}/delivery`
   })
 export const getDeliveryAcceptanceRounds = (deliveryId: number) =>
   request.get<AcceptanceRoundVO[]>({
