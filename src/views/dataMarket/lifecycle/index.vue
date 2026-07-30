@@ -93,6 +93,13 @@
           lifecycleRequest?.executionResult || '尚未执行'
         }}</el-descriptions-item>
       </el-descriptions>
+      <el-alert
+        v-if="lifecycleExecutionBlockReason"
+        :title="lifecycleExecutionBlockReason"
+        type="warning"
+        :closable="false"
+        class="mb-16px"
+      />
       <el-form ref="formRef" :model="form" :rules="rules" label-width="140px" class="max-w-760px">
         <el-divider content-position="left">执行确认</el-divider>
         <el-form-item label="近期调用摘要" prop="recentCallSummary">
@@ -165,6 +172,7 @@
             v-hasPermi="['data-market:lifecycle:execute']"
             type="danger"
             :loading="submitting"
+            :disabled="Boolean(lifecycleExecutionBlockReason)"
             @click="execute"
             >确认执行</el-button
           >
@@ -185,7 +193,7 @@ import type {
   LifecycleRequestDetail
 } from '@/api/dataMarket/types'
 import { useMessage } from '@/hooks/web/useMessage'
-import { validateLifecycleExecution } from './validation'
+import { getLifecycleExecutionBlockReason, validateLifecycleExecution } from './validation'
 
 defineOptions({ name: 'DataMarketLifecycle' })
 const message = useMessage()
@@ -201,6 +209,14 @@ const affectedCredentialIds = ref<string[]>([])
 const responsiveColumns = computed(() => (width.value <= 1024 ? 1 : 3))
 const lifecycleRequest = computed<LifecycleRequestDetail | undefined>(
   () => application.value?.lifecycleRequest
+)
+const lifecycleExecutionBlockReason = computed(() =>
+  application.value
+    ? getLifecycleExecutionBlockReason({
+        applicationStatus: application.value.status,
+        executionStatus: lifecycleRequest.value?.executionStatus
+      })
+    : '请先加载生命周期申请'
 )
 const form = reactive({
   applicationId: undefined as number | undefined,
@@ -251,6 +267,8 @@ const reviewApplication = async (applicationId: number) => {
 }
 const execute = async () => {
   if (!application.value || !(await formRef.value.validate()) || !form.applicationId) return
+  if (lifecycleExecutionBlockReason.value)
+    return message.warning(lifecycleExecutionBlockReason.value)
   const errors = validateLifecycleExecution({
     applicationType: application.value.applicationType,
     targetApiVersionId: form.targetApiVersionId

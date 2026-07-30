@@ -58,6 +58,14 @@
         ><el-descriptions-item label="版本">{{
           detail.currentVersionNo
         }}</el-descriptions-item></el-descriptions
+      ><el-divider content-position="left">申请使用信息</el-divider
+      ><el-descriptions :column="3" border
+        ><el-descriptions-item
+          v-for="item in detailBaseInfo"
+          :key="item.label"
+          :label="item.label"
+          >{{ item.value }}</el-descriptions-item
+        ></el-descriptions
       ><el-divider content-position="left">数据集、字段与查询条件</el-divider
       ><el-collapse
         ><el-collapse-item
@@ -94,6 +102,24 @@
         ><el-table-column prop="itemNo" label="序号" width="80" /><el-table-column
           prop="businessGoal"
           label="业务目标" /><el-table-column prop="expectedResult" label="预期结果" /></el-table
+      ><el-collapse class="mt-12px"
+        ><el-collapse-item
+          v-for="item in detail.processingItems"
+          :key="item.itemNo"
+          :title="`加工项 ${item.itemNo} 高级配置`"
+          ><el-descriptions :column="1" border
+            ><el-descriptions-item
+              v-for="setting in describeProcessingAdvancedSettings(item.advancedSettings)"
+              :key="setting.label"
+              :label="setting.label"
+              >{{ setting.value }}</el-descriptions-item
+            ><el-descriptions-item
+              v-if="!describeProcessingAdvancedSettings(item.advancedSettings).length"
+              label="高级配置"
+              >未配置</el-descriptions-item
+            ></el-descriptions
+          ></el-collapse-item
+        ></el-collapse
       ><el-divider content-position="left">业务与审批时间线</el-divider
       ><el-timeline
         ><el-timeline-item
@@ -129,7 +155,7 @@
   >
 </template>
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import * as DeliveryApi from '@/api/dataMarket/delivery'
 import type {
   ApplicationDetailVO,
@@ -137,6 +163,7 @@ import type {
   TimelineItem
 } from '@/api/dataMarket/types'
 import { useMessage } from '@/hooks/web/useMessage'
+import { describeApplicationBaseInfo, describeProcessingAdvancedSettings } from './presentation'
 defineOptions({ name: 'DataMarketApplication' })
 const message = useMessage()
 const loading = ref(false)
@@ -151,6 +178,9 @@ const query = reactive({
 const detailVisible = ref(false)
 const detailLoading = ref(false)
 const detail = ref<ApplicationDetailVO>()
+const detailBaseInfo = computed(() =>
+  detail.value ? describeApplicationBaseInfo(detail.value.baseInfo) : []
+)
 const timeline = ref<TimelineItem[]>([])
 const selectedId = ref<number>()
 const deliveryVisible = ref(false)

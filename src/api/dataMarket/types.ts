@@ -96,6 +96,23 @@ export interface AccessClearancePolicy {
 
 export type ApplicationType = 'CREATE' | 'CHANGE' | 'RENEW' | 'DEACTIVATE'
 
+export type ApplicationStatus =
+  | 'DRAFT'
+  | 'SUBMITTING'
+  | 'SUBMIT_FAILED'
+  | 'IN_APPROVAL'
+  | 'RETURNED_SUPPLEMENT'
+  | 'REJECTED'
+  | 'CANCELLED'
+  | 'CONFIGURING'
+  | 'PENDING_ACCEPTANCE'
+  | 'RECTIFYING'
+  | 'DELIVERED'
+  | 'EFFECTUATING'
+  | 'IMPACT_REVIEW'
+  | 'SCHEDULED'
+  | 'COMPLETED'
+
 export interface WorkflowConfigVO {
   applicationType?: ApplicationType
   processDefinitionKey: string
@@ -123,7 +140,7 @@ export interface ApplicationSummaryVO {
   applicationNo: string
   applicationType: ApplicationType
   name: string
-  status: string
+  status: ApplicationStatus
   currentVersionNo: number
   datasetCount?: number
   deliveredApiCount?: number
@@ -132,7 +149,7 @@ export interface ApplicationSummaryVO {
 
 export interface ApplicationDetailVO extends ApplicationSummaryVO {
   lockVersion: number
-  baseInfo: Record<string, unknown>
+  baseInfo: ApplicationBaseInfo
   datasets: Array<{
     applicationDatasetId: number
     datasetId: number
@@ -161,8 +178,42 @@ export interface ApplicationDetailVO extends ApplicationSummaryVO {
     fieldIds?: number[]
     businessGoal: string
     expectedResult: string
+    advancedSettings?: ProcessingAdvancedSettings
   }>
   lifecycleRequest?: LifecycleRequestDetail
+}
+
+export interface ApplicationBaseInfo {
+  name: string
+  reason: string
+  businessScenario: string
+  callerSystem: string
+  callerOwner?: string
+  environment: 'DEVELOPMENT' | 'TEST' | 'PRODUCTION' | 'MULTIPLE'
+  useStartDate: string
+  useEndDate: string | null
+  longTerm: boolean
+  frequencyType: 'PER_SECOND' | 'PER_MINUTE' | 'PER_HOUR' | 'PER_DAY' | 'IRREGULAR'
+  dailyVolume: number
+  peakVolume: number
+}
+
+export interface ProcessingAdvancedSettings {
+  joins?: Array<{
+    leftDatasetId: number
+    leftFieldId: number
+    rightDatasetId: number
+    rightFieldId: number
+    joinType: 'INNER' | 'LEFT' | 'RIGHT' | 'FULL'
+  }>
+  formulas?: Array<{ name: string; expression: string; description?: string }>
+  groupByFieldIds?: number[]
+  aggregations?: Array<{
+    fieldId?: number | null
+    function: 'COUNT' | 'COUNT_DISTINCT' | 'SUM' | 'AVG' | 'MIN' | 'MAX' | 'CUSTOM'
+    alias: string
+    customExpression?: string | null
+  }>
 }
 
 export interface TimelineItem {

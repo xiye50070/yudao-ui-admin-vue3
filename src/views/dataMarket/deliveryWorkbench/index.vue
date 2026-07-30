@@ -24,12 +24,32 @@
         ><el-form :model="versionForm" label-width="130px" class="max-w-600px"
           ><el-form-item label="API ID"><el-input-number v-model="apiId" :min="1" /></el-form-item
           ><el-form-item label="版本号"><el-input v-model="versionForm.versionNo" /></el-form-item
+          ><el-form-item label="请求方法"
+            ><el-select v-model="versionForm.method"
+              ><el-option label="GET" value="GET" /><el-option
+                label="POST"
+                value="POST" /><el-option label="PUT" value="PUT" /><el-option
+                label="PATCH"
+                value="PATCH" /><el-option
+                label="DELETE"
+                value="DELETE" /></el-select></el-form-item
           ><el-form-item label="公开地址"
             ><el-input
               v-model="versionForm.publicBaseUrl"
               placeholder="https://api.example.com" /></el-form-item
           ><el-form-item label="请求路径"
             ><el-input v-model="versionForm.requestPath" /></el-form-item
+          ><el-form-item label="认证方式"
+            ><el-select v-model="versionForm.authType"
+              ><el-option label="App Key / Secret" value="APP_KEY_SECRET" /><el-option
+                label="API Key"
+                value="API_KEY" /><el-option label="Bearer" value="BEARER" /><el-option
+                label="mTLS"
+                value="MTLS" /><el-option label="其他" value="OTHER" /></el-select></el-form-item
+          ><el-form-item label="内容类型"
+            ><el-input
+              v-model="versionForm.contentType"
+              placeholder="application/json" /></el-form-item
           ><el-form-item label="请求说明"
             ><el-input v-model="versionForm.requestDescription" type="textarea" /></el-form-item
           ><el-form-item label="响应说明"
@@ -56,6 +76,21 @@
                 value="INPUT" /><el-option label="查询" value="LOOKUP" /><el-option
                 label="派生"
                 value="DERIVED" /></el-select></el-form-item
+          ><el-form-item label="血缘操作"
+            ><el-button @click="addLineage">添加血缘</el-button></el-form-item
+          ><el-form-item label="已选血缘"
+            ><el-table :data="lineages" size="small" class="!w-100%"
+              ><el-table-column prop="sourceType" label="类型" /><el-table-column
+                prop="sourceId"
+                label="来源 ID"
+              /><el-table-column prop="role" label="角色" /><el-table-column label="操作" width="80"
+                ><template #default="{ $index }"
+                  ><el-button link type="danger" @click="lineages.splice($index, 1)"
+                    >删除</el-button
+                  ></template
+                ></el-table-column
+              ></el-table
+            ></el-form-item
           ><el-form-item label="OpenAPI 文档"
             ><el-input v-model="versionDocument" type="textarea" /></el-form-item
           ><el-alert
@@ -157,8 +192,10 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
 import * as DeliveryApi from '@/api/dataMarket/delivery'
+import type { ApiVersionCreateReq } from '@/api/dataMarket/types'
 import { useMessage } from '@/hooks/web/useMessage'
 import { validateApiVersionDraft } from './validation'
+import { buildApiVersionCreateRequest } from './versionDraft'
 defineOptions({ name: 'DataMarketDeliveryWorkbench' })
 const message = useMessage()
 const tab = ref('api')
@@ -177,6 +214,7 @@ const networkPolicyDocument = ref('{}')
 const lineageSourceType = ref<'DATASET' | 'PROCESSING_ITEM'>('DATASET')
 const lineageSourceId = ref<number>()
 const lineageRole = ref<'PRIMARY' | 'INPUT' | 'LOOKUP' | 'DERIVED'>('PRIMARY')
+const lineages = ref<ApiVersionCreateReq['lineage']>([])
 const versionError = ref('')
 const secretDialogVisible = ref(false)
 const secretForSubmission = ref('')
@@ -187,10 +225,10 @@ const apiForm = reactive({
 })
 const versionForm = reactive({
   versionNo: 'v1',
-  method: 'GET' as const,
+  method: 'GET' as ApiVersionCreateReq['method'],
   publicBaseUrl: '',
   requestPath: '/',
-  authType: 'APP_KEY_SECRET' as const,
+  authType: 'APP_KEY_SECRET' as ApiVersionCreateReq['authType'],
   contentType: 'application/json',
   rateLimitPolicy: {},
   networkPolicy: {},
@@ -215,6 +253,15 @@ const credential = reactive({
 })
 const requireId = (id: number | undefined, label: string) =>
   id || (message.warning(`请填写${label}`), undefined)
+const addLineage = () => {
+  if (!lineageSourceId.value) return message.warning('请填写血缘来源 ID')
+  lineages.value.push({
+    sourceType: lineageSourceType.value,
+    sourceId: lineageSourceId.value,
+    role: lineageRole.value
+  })
+  lineageSourceId.value = undefined
+}
 const createApi = async () => {
   const id = requireId(deliveryId.value, '交付 ID')
   if (!id || !apiForm.name || !apiForm.ownerUserId) return message.warning('请完整填写 API 信息')
@@ -231,33 +278,27 @@ const createVersion = async () => {
     const openapiDocument = JSON.parse(versionDocument.value)
     const rateLimitPolicy = JSON.parse(rateLimitPolicyDocument.value)
     const networkPolicy = JSON.parse(networkPolicyDocument.value)
-    const lineage = lineageSourceId.value
-      ? [
-          {
-            sourceType: lineageSourceType.value,
-            sourceId: lineageSourceId.value,
-            role: lineageRole.value
-          }
-        ]
-      : []
     const errors = validateApiVersionDraft({
       ...versionForm,
       rateLimitPolicy,
       networkPolicy,
-      lineage
+      lineage: lineages.value
     })
     if (Object.keys(errors).length) {
       versionError.value = Object.values(errors)[0]
       return
     }
     versionError.value = ''
-    await DeliveryApi.createApiVersion(id, {
-      ...versionForm,
-      openapiDocument,
-      rateLimitPolicy,
-      networkPolicy,
-      lineage
-    })
+    await DeliveryApi.createApiVersion(
+      id,
+      buildApiVersionCreateRequest({
+        ...versionForm,
+        openapiDocument,
+        rateLimitPolicy,
+        networkPolicy,
+        lineage: lineages.value
+      })
+    )
     message.success('不可变版本已创建')
   } catch {
     versionError.value = 'OpenAPI、限流策略和网络策略必须是合法 JSON'
