@@ -33,8 +33,41 @@
               placeholder="https://api.example.com" /></el-form-item
           ><el-form-item label="请求路径"
             ><el-input v-model="versionForm.requestPath" /></el-form-item
+          ><el-form-item label="请求说明"
+            ><el-input v-model="versionForm.requestDescription" type="textarea" /></el-form-item
+          ><el-form-item label="响应说明"
+            ><el-input v-model="versionForm.responseDescription" type="textarea" /></el-form-item
+          ><el-form-item label="成功说明"
+            ><el-input v-model="versionForm.successDescription" type="textarea" /></el-form-item
+          ><el-form-item label="失败说明"
+            ><el-input v-model="versionForm.failureDescription" type="textarea" /></el-form-item
+          ><el-form-item label="限流策略 JSON"
+            ><el-input v-model="rateLimitPolicyDocument" type="textarea" /></el-form-item
+          ><el-form-item label="网络策略 JSON"
+            ><el-input v-model="networkPolicyDocument" type="textarea" /></el-form-item
+          ><el-form-item label="血缘类型"
+            ><el-select v-model="lineageSourceType"
+              ><el-option label="数据集" value="DATASET" /><el-option
+                label="加工项"
+                value="PROCESSING_ITEM" /></el-select></el-form-item
+          ><el-form-item label="血缘来源 ID"
+            ><el-input-number v-model="lineageSourceId" :min="1" /></el-form-item
+          ><el-form-item label="血缘角色"
+            ><el-select v-model="lineageRole"
+              ><el-option label="主来源" value="PRIMARY" /><el-option
+                label="输入"
+                value="INPUT" /><el-option label="查询" value="LOOKUP" /><el-option
+                label="派生"
+                value="DERIVED" /></el-select></el-form-item
           ><el-form-item label="OpenAPI 文档"
             ><el-input v-model="versionDocument" type="textarea" /></el-form-item
+          ><el-alert
+            v-if="versionError"
+            :title="versionError"
+            type="error"
+            :closable="false"
+            class="mb-12px"
+          />
           ><el-button
             v-hasPermi="['data-market:delivery:api-version-create']"
             type="primary"
@@ -71,18 +104,12 @@
             ><el-input-number v-model="credential.apiId" :min="1" /></el-form-item
           ><el-form-item label="凭证名称"><el-input v-model="credential.name" /></el-form-item
           ><el-form-item label="App Key"><el-input v-model="credential.appKey" /></el-form-item
-          ><el-form-item label="App Secret"
-            ><el-input
-              v-model="credential.appSecret"
-              type="password"
-              show-password
-              autocomplete="new-password" /></el-form-item
           ><el-form-item label="授权版本 ID"
             ><el-input-number v-model="authorizationVersionId" :min="1" /></el-form-item
           ><el-button
             v-hasPermi="['data-market:delivery:credential-create']"
             type="primary"
-            @click="createCredential"
+            @click="openSecretDialog"
             >配置凭证</el-button
           ><el-divider /><el-form-item label="阶段"
             ><el-select v-model="stage"
@@ -107,11 +134,34 @@
       ></el-tabs
     ></ContentWrap
   >
+  <Dialog
+    v-if="secretDialogVisible"
+    v-model="secretDialogVisible"
+    title="一次性密钥录入"
+    @closed="clearSecret"
+    ><el-alert
+      title="密钥只用于本次提交；关闭、取消或提交完成后立即清空。"
+      type="warning"
+      :closable="false"
+    />
+    ><el-input
+      v-model="secretForSubmission"
+      type="password"
+      autocomplete="one-time-code"
+      class="mt-12px"
+    />
+    ><template #footer
+      ><el-button @click="cancelSecretDialog">取消</el-button
+      ><el-button type="primary" @click="createCredential">确认并提交</el-button></template
+    >
+    ></Dialog
+  >
 </template>
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
 import * as DeliveryApi from '@/api/dataMarket/delivery'
 import { useMessage } from '@/hooks/web/useMessage'
+import { validateApiVersionDraft } from './validation'
 defineOptions({ name: 'DataMarketDeliveryWorkbench' })
 const message = useMessage()
 const tab = ref('api')
@@ -125,6 +175,14 @@ const stage = ref<'DELIVERY_PLAN' | 'API_CONFIG' | 'CREDENTIAL_CONFIG' | 'DOCUME
 )
 const taskDescription = ref('')
 const versionDocument = ref('{}')
+const rateLimitPolicyDocument = ref('{}')
+const networkPolicyDocument = ref('{}')
+const lineageSourceType = ref<'DATASET' | 'PROCESSING_ITEM'>('DATASET')
+const lineageSourceId = ref<number>()
+const lineageRole = ref<'PRIMARY' | 'INPUT' | 'LOOKUP' | 'DERIVED'>('PRIMARY')
+const versionError = ref('')
+const secretDialogVisible = ref(false)
+const secretForSubmission = ref('')
 const apiForm = reactive({
   name: '',
   ownerUserId: undefined as number | undefined,
@@ -142,8 +200,7 @@ const versionForm = reactive({
   requestDescription: '',
   responseDescription: '',
   successDescription: '',
-  failureDescription: '',
-  lineage: [{ sourceType: 'DATASET' as const, sourceId: 1, role: 'PRIMARY' as const }]
+  failureDescription: ''
 })
 const binding = reactive({
   upstreamTargetRef: '',
@@ -157,8 +214,7 @@ const credential = reactive({
   apiId: undefined as number | undefined,
   name: '',
   authType: 'APP_KEY_SECRET' as const,
-  appKey: '',
-  appSecret: ''
+  appKey: ''
 })
 const requireId = (id: number | undefined, label: string) =>
   id || (message.warning(`请填写${label}`), undefined)
@@ -176,10 +232,38 @@ const createVersion = async () => {
   if (!id) return
   try {
     const openapiDocument = JSON.parse(versionDocument.value)
-    await DeliveryApi.createApiVersion(id, { ...versionForm, openapiDocument })
+    const rateLimitPolicy = JSON.parse(rateLimitPolicyDocument.value)
+    const networkPolicy = JSON.parse(networkPolicyDocument.value)
+    const lineage = lineageSourceId.value
+      ? [
+          {
+            sourceType: lineageSourceType.value,
+            sourceId: lineageSourceId.value,
+            role: lineageRole.value
+          }
+        ]
+      : []
+    const errors = validateApiVersionDraft({
+      ...versionForm,
+      rateLimitPolicy,
+      networkPolicy,
+      lineage
+    })
+    if (Object.keys(errors).length) {
+      versionError.value = Object.values(errors)[0]
+      return
+    }
+    versionError.value = ''
+    await DeliveryApi.createApiVersion(id, {
+      ...versionForm,
+      openapiDocument,
+      rateLimitPolicy,
+      networkPolicy,
+      lineage
+    })
     message.success('不可变版本已创建')
   } catch {
-    message.error('OpenAPI 文档必须是合法 JSON')
+    versionError.value = 'OpenAPI、限流策略和网络策略必须是合法 JSON'
   }
 }
 const saveBinding = async () => {
@@ -188,26 +272,44 @@ const saveBinding = async () => {
   await DeliveryApi.updateRuntimeBinding(id, environment.value, binding)
   message.success('运行绑定已保存')
 }
-const createCredential = async () => {
+const openSecretDialog = () => {
   if (
     !credential.deliveryId ||
     !credential.apiId ||
     !credential.name ||
     !credential.appKey ||
-    !credential.appSecret ||
     !authorizationVersionId.value
   )
     return message.warning('请完整填写凭证及授权版本')
+  secretDialogVisible.value = true
+}
+const clearSecret = () => {
+  secretForSubmission.value = ''
+}
+const cancelSecretDialog = () => {
+  clearSecret()
+  secretDialogVisible.value = false
+}
+const createCredential = async () => {
+  if (
+    !secretForSubmission.value ||
+    !credential.deliveryId ||
+    !credential.apiId ||
+    !authorizationVersionId.value
+  )
+    return message.warning('请完整填写凭证及一次性密钥')
   try {
     await DeliveryApi.createCredential({
       ...credential,
       deliveryId: credential.deliveryId,
       apiId: credential.apiId,
+      appSecret: secretForSubmission.value,
       authorizations: [{ apiVersionId: authorizationVersionId.value, status: 'ACTIVE' }]
     })
     message.success('凭证已提交配置')
   } finally {
-    credential.appSecret = ''
+    secretDialogVisible.value = false
+    clearSecret()
   }
 }
 const completeTask = async () => {

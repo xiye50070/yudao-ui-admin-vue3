@@ -12,10 +12,13 @@ describe('data-market management delivery contracts', () => {
 
   it('creates a delivery plan under its application', () => {
     DeliveryApi.createDelivery(11, { planDescription: '交付方案', ownerUserId: 7 })
-    expect(request.post).toHaveBeenCalledWith({
-      url: '/data-market/management/applications/11/delivery',
-      data: { planDescription: '交付方案', ownerUserId: 7 }
-    })
+    expect(request.post).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: '/data-market/management/applications/11/delivery',
+        headers: { 'Idempotency-Key': expect.stringMatching(/^.{16,100}$/) },
+        data: { planDescription: '交付方案', ownerUserId: 7 }
+      })
+    )
   })
 
   it('creates an immutable API version with public contract only', () => {
@@ -36,7 +39,10 @@ describe('data-market management delivery contracts', () => {
       lineage: [{ sourceType: 'DATASET', sourceId: 2, role: 'PRIMARY' }]
     })
     expect(request.post).toHaveBeenCalledWith(
-      expect.objectContaining({ url: '/data-market/management/apis/21/versions' })
+      expect.objectContaining({
+        url: '/data-market/management/apis/21/versions',
+        headers: { 'Idempotency-Key': expect.stringMatching(/^.{16,100}$/) }
+      })
     )
   })
 
@@ -71,10 +77,13 @@ describe('data-market management delivery contracts', () => {
       authorizations: [{ apiVersionId: 31, status: 'ACTIVE' as const }]
     }
     DeliveryApi.createCredential(requestBody)
-    expect(request.post).toHaveBeenCalledWith({
-      url: '/data-market/management/credentials',
-      data: requestBody
-    })
+    expect(request.post).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: '/data-market/management/credentials',
+        headers: { 'Idempotency-Key': expect.stringMatching(/^.{16,100}$/) },
+        data: requestBody
+      })
+    )
   })
 
   it('resolves an acceptance issue and executes an approved lifecycle request', () => {
@@ -85,13 +94,50 @@ describe('data-market management delivery contracts', () => {
       actualEffectiveAt: '2026-08-01T00:00:00+08:00',
       actionDetail: '按计划执行'
     })
-    expect(request.post).toHaveBeenNthCalledWith(1, {
-      url: '/data-market/management/acceptance-issues/91/resolve',
-      data: { resolution: '已修复并完成回归' }
-    })
+    expect(request.post).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        url: '/data-market/management/acceptance-issues/91/resolve',
+        headers: { 'Idempotency-Key': expect.stringMatching(/^.{16,100}$/) },
+        data: { resolution: '已修复并完成回归' }
+      })
+    )
     expect(request.post).toHaveBeenNthCalledWith(
       2,
-      expect.objectContaining({ url: '/data-market/management/lifecycle-applications/11/execute' })
+      expect.objectContaining({
+        url: '/data-market/management/lifecycle-applications/11/execute',
+        headers: { 'Idempotency-Key': expect.stringMatching(/^.{16,100}$/) }
+      })
     )
+  })
+
+  it('puts credential authorizations with required version zero', () => {
+    DeliveryApi.updateCredentialAuthorizations({ id: 9, lockVersion: 0 }, [
+      { apiVersionId: 31, status: 'ACTIVE' }
+    ])
+
+    expect(request.put).toHaveBeenCalledWith({
+      url: '/data-market/management/credentials/9/authorizations',
+      headers: { 'If-Match-Version': '0' },
+      data: { authorizations: [{ apiVersionId: 31, status: 'ACTIVE' }] }
+    })
+  })
+
+  it('uses an idempotency key for every OpenAPI-mandated delivery write', () => {
+    DeliveryApi.createDeliveredApi(1, { name: 'a', ownerUserId: 2 })
+    DeliveryApi.completeDeliveryTask(1, 'API_CONFIG', { description: 'ready' })
+    DeliveryApi.createCredential({
+      deliveryId: 1,
+      apiId: 2,
+      name: 'app',
+      authType: 'APP_KEY_SECRET',
+      appKey: 'key',
+      appSecret: 'secret',
+      authorizations: [{ apiVersionId: 3, status: 'ACTIVE' }]
+    })
+    DeliveryApi.submitDeliveryAcceptance(1, 'all ready')
+
+    for (const call of request.post.mock.calls)
+      expect(call[0].headers?.['Idempotency-Key']).toMatch(/^.{16,100}$/)
   })
 })
