@@ -12,7 +12,11 @@
           v-model="query.applicantUserId"
           :min="1"
           placeholder="申请人 ID" /></el-form-item
-      ><el-form-item><el-button @click="getList">查询</el-button></el-form-item></el-form
+      ><el-form-item
+        ><el-button v-hasPermi="['data-market:application:management-query']" @click="getList"
+          >查询</el-button
+        ></el-form-item
+      ></el-form
     ></ContentWrap
   >
   <ContentWrap
@@ -31,7 +35,7 @@
       /><el-table-column label="操作" width="120"
         ><template #default="{ row }"
           ><el-button
-            v-hasPermi="['data-market:application:query']"
+            v-hasPermi="['data-market:application:management-query']"
             link
             type="primary"
             @click="openDetail(row.id)"

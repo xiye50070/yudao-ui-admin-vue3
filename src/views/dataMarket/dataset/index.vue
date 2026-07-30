@@ -24,14 +24,17 @@
       ><el-table-column prop="businessName" label="数据集名称" /><el-table-column
         prop="datasetCode"
         label="编码"
-      /><el-table-column prop="sourceSystemName" label="来源系统" /><el-table-column
-        prop="sensitivityLevel"
-        label="敏感级"
-        width="90"
-      /><el-table-column prop="fieldCount" label="字段数" width="90" /><el-table-column
-        prop="status"
+      /><el-table-column prop="sourceSystemId" label="来源系统 ID" width="120" /><el-table-column
+        prop="subjectDomainId"
+        label="主题域 ID"
+        width="110"
+      /><el-table-column prop="sensitivityLevel" label="敏感级" width="90" /><el-table-column
         label="状态"
-      /><el-table-column label="操作" width="250"
+        width="100"
+        ><template #default="{ row }">{{
+          row.publishStatus === 1 ? '已发布' : '草稿'
+        }}</template></el-table-column
+      ><el-table-column label="操作" width="250"
         ><template #default="{ row }"
           ><el-button
             v-hasPermi="['data-market:dataset:update']"
@@ -76,18 +79,21 @@
     ><el-form ref="formRef" :model="form" :rules="rules" label-width="100px"
       ><el-form-item label="数据集名称" prop="businessName"
         ><el-input v-model="form.businessName" /></el-form-item
+      ><el-form-item label="数据集编码" prop="datasetCode"
+        ><el-input v-model="form.datasetCode" /></el-form-item
       ><el-form-item label="来源系统" prop="sourceSystemId"
         ><el-input-number
           v-model="form.sourceSystemId"
           :min="1"
           placeholder="请输入来源系统 ID" /></el-form-item
-      ><el-form-item label="物理表名"><el-input v-model="form.physicalName" /></el-form-item
-      ><el-form-item label="主题域 ID"
+      ><el-form-item label="物理表名" prop="physicalName"
+        ><el-input v-model="form.physicalName" /></el-form-item
+      ><el-form-item label="主题域 ID" prop="subjectDomainId"
         ><el-input-number v-model="form.subjectDomainId" :min="1" /></el-form-item
-      ><el-form-item label="敏感级别"
+      ><el-form-item label="敏感级别" prop="sensitivityLevel"
         ><el-select v-model="form.sensitivityLevel"
           ><el-option
-            v-for="level in [0, 1, 2, 3, 4]"
+            v-for="level in [1, 2, 3, 4]"
             :key="level"
             :label="`L${level}`"
             :value="level" /></el-select></el-form-item
@@ -100,8 +106,14 @@
         @save="save"
         @publish="openPublish(form)" /></template
   ></el-drawer>
-  <Dialog v-model="fieldVisible" title="字段编辑" width="760px"
-    ><el-table :data="fields"
+  <Dialog v-model="fieldVisible" title="字段编辑" width="min(1280px, 96vw)"
+    ><el-alert
+      title="可返回、可查询由申请人按申请单选择；此处只维护数据表字段元数据。"
+      type="info"
+      :closable="false"
+      class="mb-12px"
+    />
+    <el-table :data="fields"
       ><el-table-column label="字段编码"
         ><template #default="{ row }"
           ><el-input v-model="row.fieldCode" /></template></el-table-column
@@ -115,11 +127,26 @@
         ><template #default="{ row }"
           ><el-input-number
             v-model="row.sensitivityLevel"
-            :min="0"
+            :min="1"
             :max="4" /></template></el-table-column
       ><el-table-column label="说明"
         ><template #default="{ row }"
-          ><el-input v-model="row.description" /></template></el-table-column></el-table
+          ><el-input v-model="row.businessDescription" /></template></el-table-column
+      ><el-table-column label="可空" width="72"
+        ><template #default="{ row }"
+          ><el-switch v-model="row.nullable" /></template></el-table-column
+      ><el-table-column label="主键" width="72"
+        ><template #default="{ row }"
+          ><el-switch v-model="row.primaryKey" /></template></el-table-column
+      ><el-table-column label="关联键" width="82"
+        ><template #default="{ row }"
+          ><el-switch v-model="row.joinKey" /></template></el-table-column
+      ><el-table-column label="启用" width="72"
+        ><template #default="{ row }"
+          ><el-switch
+            v-model="row.status"
+            :active-value="0"
+            :inactive-value="1" /></template></el-table-column></el-table
     ><el-button v-hasPermi="['data-market:dataset:update']" class="mt-12px" @click="addField"
       >新增字段</el-button
     ><template #footer
@@ -163,7 +190,7 @@
       ><el-form-item label="敏感级别" prop="sensitivityLevel"
         ><el-select v-model="publishForm.sensitivityLevel"
           ><el-option
-            v-for="level in [0, 1, 2, 3, 4]"
+            v-for="level in [1, 2, 3, 4]"
             :key="level"
             :label="`L${level}`"
             :value="level" /></el-select></el-form-item
@@ -182,6 +209,7 @@ import * as CatalogApi from '@/api/dataMarket/catalog'
 import type { DatasetAclRule, DatasetFieldVO, DatasetVO } from '@/api/dataMarket/types'
 import * as SecurityApi from '@/api/dataMarket/security'
 import DatasetActions from './DatasetActions.vue'
+import { createEmptyDatasetField, toDatasetFieldSaveReq } from './contracts'
 import { useMessage } from '@/hooks/web/useMessage'
 defineOptions({ name: 'DataMarketDataset' })
 const message = useMessage()
@@ -203,7 +231,7 @@ const publishFormRef = ref<any>()
 const publishForm = reactive({
   subjectDomainId: undefined as number | undefined,
   tagIdsText: '',
-  sensitivityLevel: 0,
+  sensitivityLevel: 1,
   publishComment: ''
 })
 const publishRules = {
@@ -212,16 +240,21 @@ const publishRules = {
   sensitivityLevel: [{ required: true, message: '请选择敏感级别', trigger: 'change' }]
 }
 const form = reactive<DatasetVO>({
+  datasetCode: '',
   businessName: '',
   sourceSystemId: undefined,
   physicalName: '',
   subjectDomainId: undefined,
-  sensitivityLevel: 0,
+  sensitivityLevel: 1,
   description: ''
 })
 const rules = {
+  datasetCode: [{ required: true, message: '请输入数据集编码', trigger: 'blur' }],
   businessName: [{ required: true, message: '请输入数据集名称', trigger: 'blur' }],
-  sourceSystemId: [{ required: true, message: '请选择来源系统', trigger: 'change' }]
+  sourceSystemId: [{ required: true, message: '请选择来源系统', trigger: 'change' }],
+  physicalName: [{ required: true, message: '请输入物理表名', trigger: 'blur' }],
+  subjectDomainId: [{ required: true, message: '请选择主题域', trigger: 'change' }],
+  sensitivityLevel: [{ required: true, message: '请选择敏感级别', trigger: 'change' }]
 }
 const getList = async () => {
   loading.value = true
@@ -236,11 +269,12 @@ const getList = async () => {
 const openDrawer = async (row?: DatasetVO) => {
   Object.assign(form, {
     id: undefined,
+    datasetCode: '',
     businessName: '',
     sourceSystemId: undefined,
     physicalName: '',
     subjectDomainId: undefined,
-    sensitivityLevel: 0,
+    sensitivityLevel: 1,
     description: ''
   })
   if (row?.id) Object.assign(form, await CatalogApi.getDataset(row.id))
@@ -274,14 +308,15 @@ const saveAcl = async () => {
   message.success('ACL 已保存')
 }
 const addField = () =>
-  fields.value.push({ fieldCode: '', fieldName: '', dataType: 'varchar', sensitivityLevel: 0 })
+  currentId.value &&
+  fields.value.push(createEmptyDatasetField(currentId.value, fields.value.length + 1))
 const saveFields = async () => {
   if (
     !currentId.value ||
     fields.value.some((field) => !field.fieldCode || !field.fieldName || !field.dataType)
   )
     return message.warning('字段名称和类型不能为空')
-  await CatalogApi.updateDatasetFields(currentId.value, fields.value)
+  await CatalogApi.updateDatasetFields(currentId.value, fields.value.map(toDatasetFieldSaveReq))
   fieldVisible.value = false
   message.success('字段已保存')
 }
@@ -291,7 +326,7 @@ const openPublish = (row: DatasetVO) => {
   Object.assign(publishForm, {
     subjectDomainId: row.subjectDomainId,
     tagIdsText: (row.tagIds || []).join(','),
-    sensitivityLevel: row.sensitivityLevel || 0,
+    sensitivityLevel: row.sensitivityLevel || 1,
     publishComment: ''
   })
   publishVisible.value = true

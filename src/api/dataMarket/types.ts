@@ -12,8 +12,10 @@ export interface SubjectDomainVO {
   id?: number
   code: string
   name: string
-  parentId?: number
+  parentId: number
   description?: string
+  sort: number
+  status: number
   visibleDatasetCount?: number
 }
 
@@ -21,26 +23,40 @@ export interface TagVO {
   id?: number
   code: string
   name: string
+  description?: string
   color?: string
+  sort: number
+  status: number
 }
 
 export interface SourceSystemVO {
   id?: number
   code: string
   name: string
-  ownerName?: string
+  ownerUserId?: number
+  ownerDeptId?: number
   description?: string
-  status?: number
+  status: number
 }
 
 export interface DatasetFieldVO {
   id?: number
+  datasetId?: number
+  externalId?: string
   fieldCode: string
   fieldName: string
   dataType: string
-  description?: string
+  length?: number
+  precisionValue?: number
+  scaleValue?: number
+  businessDescription?: string
+  nullable: boolean
+  primaryKey: boolean
+  joinKey: boolean
   sensitivityLevel: number
-  required?: boolean
+  status: number
+  metadataVersion?: string
+  displayOrder?: number
 }
 
 export interface DatasetVO {
@@ -56,7 +72,7 @@ export interface DatasetVO {
   sensitivityLevel?: number
   tagIds?: number[]
   fieldCount?: number
-  status?: string
+  publishStatus?: number
   fields?: DatasetFieldVO[]
 }
 
@@ -73,22 +89,33 @@ export interface AccessClearanceRule extends DatasetAclRule {
   enabled: boolean
 }
 
+export interface AccessClearancePolicy {
+  version: number
+  rules: AccessClearanceRule[]
+}
+
 export type ApplicationType = 'CREATE' | 'CHANGE' | 'RENEW' | 'DEACTIVATE'
 
 export interface WorkflowConfigVO {
   applicationType?: ApplicationType
   processDefinitionKey: string
   processDefinitionName?: string
-  enabled?: boolean
+  status: number
+  lockVersion?: number
 }
 
 export interface MetadataImportResult {
   batchNo: string
-  status?: string
-  totalCount?: number
-  successCount?: number
-  failedCount?: number
-  errors?: Array<{ rowNo: number; field?: string; message: string }>
+  status: 'VALIDATING' | 'FAILED' | 'SUCCEEDED'
+  datasetCount: number
+  fieldCount: number
+  errorCount: number
+  errors: Array<{
+    rowNumber: number
+    fieldName?: string
+    errorCode?: string
+    errorMessage: string
+  }>
 }
 
 export interface ApplicationSummaryVO {

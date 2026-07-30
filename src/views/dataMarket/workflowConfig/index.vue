@@ -19,7 +19,13 @@
           placeholder="例如 data-market-renew" /></el-form-item
       ><el-form-item label="流程定义名称"
         ><el-input v-model="form.processDefinitionName" /></el-form-item
-      ><el-form-item label="启用"><el-switch v-model="form.enabled" /></el-form-item
+      ><el-form-item label="启用"
+        ><el-switch
+          v-model="form.status"
+          :active-value="0"
+          :inactive-value="1"
+          active-text="启用"
+          inactive-text="停用" /></el-form-item
       ><el-form-item
         ><el-button v-hasPermi="['data-market:workflow-config:update']" type="primary" @click="save"
           >保存 {{ currentLabel }} 流程</el-button
@@ -41,7 +47,7 @@ const formRef = ref<any>()
 const form = reactive<WorkflowConfigVO>({
   processDefinitionKey: '',
   processDefinitionName: '',
-  enabled: true
+  status: 0
 })
 const rules = {
   processDefinitionKey: [{ required: true, message: '请输入流程定义 Key', trigger: 'blur' }]

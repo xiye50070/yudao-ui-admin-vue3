@@ -16,10 +16,7 @@
             ><el-input-number v-model="apiForm.ownerUserId" :min="1" /></el-form-item
           ><el-form-item label="说明"
             ><el-input v-model="apiForm.description" type="textarea" /></el-form-item
-          ><el-button
-            v-hasPermi="['data-market:delivery:api-create']"
-            type="primary"
-            @click="createApi"
+          ><el-button v-hasPermi="['data-market:api:create']" type="primary" @click="createApi"
             >创建 API</el-button
           ></el-form
         ></el-tab-pane
@@ -69,7 +66,7 @@
             class="mb-12px"
           />
           ><el-button
-            v-hasPermi="['data-market:delivery:api-version-create']"
+            v-hasPermi="['data-market:api:version:create']"
             type="primary"
             @click="createVersion"
             >创建不可变版本</el-button
@@ -90,7 +87,7 @@
             ><el-input-number v-model="binding.timeoutMs" :min="100" :max="30000" /></el-form-item
           ><el-form-item label="TLS 校验"><el-switch v-model="binding.tlsVerify" /></el-form-item
           ><el-button
-            v-hasPermi="['data-market:delivery:runtime-binding-update']"
+            v-hasPermi="['data-market:api:runtime:update']"
             type="primary"
             @click="saveBinding"
             >保存运行绑定</el-button
@@ -107,7 +104,7 @@
           ><el-form-item label="授权版本 ID"
             ><el-input-number v-model="authorizationVersionId" :min="1" /></el-form-item
           ><el-button
-            v-hasPermi="['data-market:delivery:credential-create']"
+            v-hasPermi="['data-market:credential:create']"
             type="primary"
             @click="openSecretDialog"
             >配置凭证</el-button
@@ -122,10 +119,10 @@
                 value="DOCUMENTATION" /></el-select></el-form-item
           ><el-form-item label="完成说明"
             ><el-input v-model="taskDescription" type="textarea" /></el-form-item
-          ><el-button v-hasPermi="['data-market:delivery:task-complete']" @click="completeTask"
+          ><el-button v-hasPermi="['data-market:delivery:task:complete']" @click="completeTask"
             >完成阶段</el-button
           ><el-button
-            v-hasPermi="['data-market:delivery:acceptance-submit']"
+            v-hasPermi="['data-market:acceptance:submit']"
             type="success"
             @click="submitAcceptance"
             >提交统一验收</el-button

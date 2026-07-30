@@ -24,11 +24,11 @@ const sourceSystems = ref<any[]>([])
 onMounted(async () => {
   const [domainData, tagData, sourceData] = await Promise.all([
     CatalogApi.getSubjectDomainList(),
-    CatalogApi.getTagPage({ pageNo: 1, pageSize: 1 }),
+    CatalogApi.getTags(),
     CatalogApi.getSourceSystemPage({ pageNo: 1, pageSize: 1 })
   ])
   domains.value = domainData
-  tags.value = tagData.list || []
+  tags.value = tagData
   sourceSystems.value = sourceData.list || []
 })
 </script>

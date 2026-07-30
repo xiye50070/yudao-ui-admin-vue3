@@ -1,0 +1,27 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { describe, expect, it } from 'vitest'
+
+const source = (relativePath: string) =>
+  readFileSync(resolve(process.cwd(), 'src/views/dataMarket', relativePath), 'utf8')
+
+describe('data-market management permission contracts', () => {
+  it('uses the management application query permission', () => {
+    expect(source('application/index.vue')).toContain('data-market:application:management-query')
+  })
+
+  it('uses backend delivery and acceptance permissions without UI-only aliases', () => {
+    const delivery = source('deliveryWorkbench/index.vue')
+    const acceptance = source('acceptanceIssue/index.vue')
+
+    expect(delivery).toContain('data-market:api:create')
+    expect(delivery).toContain('data-market:api:version:create')
+    expect(delivery).toContain('data-market:api:runtime:update')
+    expect(delivery).toContain('data-market:credential:create')
+    expect(delivery).toContain('data-market:delivery:task:complete')
+    expect(delivery).toContain('data-market:acceptance:submit')
+    expect(acceptance).toContain('data-market:acceptance:issue-handle')
+    expect(delivery).not.toContain('data-market:delivery:api-create')
+    expect(acceptance).not.toContain('data-market:acceptance-issue:resolve')
+  })
+})

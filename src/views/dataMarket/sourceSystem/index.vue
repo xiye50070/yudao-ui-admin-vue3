@@ -13,10 +13,10 @@
       ><el-table-column prop="name" label="系统名称" /><el-table-column
         prop="code"
         label="系统编码"
-      /><el-table-column prop="ownerName" label="负责人" /><el-table-column
-        prop="description"
-        label="说明"
-      /><el-table-column label="操作"
+      /><el-table-column prop="ownerUserId" label="负责人 ID" /><el-table-column
+        prop="ownerDeptId"
+        label="负责部门 ID"
+      /><el-table-column prop="description" label="说明" /><el-table-column label="操作"
         ><template #default="{ row }"
           ><el-button
             v-hasPermi="['data-market:source-system:update']"
@@ -43,7 +43,17 @@
     ><el-form ref="formRef" :model="form" :rules="rules" label-width="90px"
       ><el-form-item label="名称" prop="name"><el-input v-model="form.name" /></el-form-item
       ><el-form-item label="编码" prop="code"><el-input v-model="form.code" /></el-form-item
-      ><el-form-item label="负责人"><el-input v-model="form.ownerName" /></el-form-item
+      ><el-form-item label="负责人 ID"
+        ><el-input-number v-model="form.ownerUserId" :min="1" /></el-form-item
+      ><el-form-item label="负责部门 ID"
+        ><el-input-number v-model="form.ownerDeptId" :min="1" /></el-form-item
+      ><el-form-item label="状态"
+        ><el-switch
+          v-model="form.status"
+          :active-value="0"
+          :inactive-value="1"
+          active-text="启用"
+          inactive-text="停用" /></el-form-item
       ><el-form-item label="说明"
         ><el-input v-model="form.description" type="textarea" /></el-form-item></el-form
     ><template #footer><el-button type="primary" @click="save">保存</el-button></template></Dialog
@@ -62,7 +72,14 @@ const total = ref(0)
 const visible = ref(false)
 const formRef = ref<any>()
 const query = reactive({ pageNo: 1, pageSize: 10 })
-const form = reactive<SourceSystemVO>({ name: '', code: '', ownerName: '', description: '' })
+const form = reactive<SourceSystemVO>({
+  name: '',
+  code: '',
+  ownerUserId: undefined,
+  ownerDeptId: undefined,
+  description: '',
+  status: 0
+})
 const rules = {
   name: [{ required: true, message: '请输入系统名称', trigger: 'blur' }],
   code: [{ required: true, message: '请输入系统编码', trigger: 'blur' }]
@@ -78,7 +95,18 @@ const getList = async () => {
   }
 }
 const open = (row?: SourceSystemVO) => {
-  Object.assign(form, row || { id: undefined, name: '', code: '', ownerName: '', description: '' })
+  Object.assign(
+    form,
+    row || {
+      id: undefined,
+      name: '',
+      code: '',
+      ownerUserId: undefined,
+      ownerDeptId: undefined,
+      description: '',
+      status: 0
+    }
+  )
   visible.value = true
 }
 const save = async () => {

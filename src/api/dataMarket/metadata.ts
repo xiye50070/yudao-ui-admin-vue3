@@ -5,13 +5,18 @@ const management = '/data-market/management'
 
 export const downloadMetadataTemplate = () =>
   request.download<Blob>({ url: `${management}/metadata-import/template` })
-export const importMetadata = (file: File, sourceSystemId?: number) => {
+export const importMetadata = (
+  file: File,
+  updateExisting = false,
+  idempotencyKey = crypto.randomUUID()
+) => {
   const data = new FormData()
   data.append('file', file)
-  if (sourceSystemId) data.append('sourceSystemId', String(sourceSystemId))
+  data.append('updateExisting', String(updateExisting))
   return request.post<MetadataImportResult>({
     url: `${management}/metadata-imports`,
     headersType: 'multipart/form-data',
+    headers: { 'Idempotency-Key': idempotencyKey },
     data
   })
 }

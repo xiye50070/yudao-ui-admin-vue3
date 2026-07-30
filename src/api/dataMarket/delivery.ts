@@ -20,14 +20,23 @@ const commandHeaders = (idempotencyKey?: string): { 'Idempotency-Key': string } 
   'Idempotency-Key': idempotencyKey ?? crypto.randomUUID()
 })
 export const getApplicationPage = (
-  params: PageParam & { status?: string; applicantUserId?: number }
+  params: PageParam & {
+    status?: string
+    applicationType?: string
+    applicantUserId?: number
+    name?: string
+  }
 ) => request.get<PageResult<ApplicationSummaryVO>>({ url: `${management}/applications`, params })
 export const getApplication = (applicationId: number) =>
   request.get<ApplicationDetailVO>({ url: `${management}/applications/${applicationId}` })
 export const getApplicationTimeline = (applicationId: number) =>
-  request.get<TimelineItem[]>({ url: `/data-market/applications/${applicationId}/timeline` })
+  request.get<TimelineItem[]>({
+    url: `${management}/applications/${applicationId}/timeline`
+  })
 export const getDeliveryAcceptanceRounds = (deliveryId: number) =>
-  request.get<AcceptanceRoundVO[]>({ url: `/data-market/deliveries/${deliveryId}/acceptance-rounds` })
+  request.get<AcceptanceRoundVO[]>({
+    url: `${management}/deliveries/${deliveryId}/acceptance-rounds`
+  })
 export const createDelivery = (
   applicationId: number,
   data: DeliveryCreateReq,

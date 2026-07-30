@@ -12,11 +12,11 @@ import { validateLifecycleExecution } from '@/views/dataMarket/lifecycle/validat
 describe('admin acceptance and lifecycle workbench contracts', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('loads existing acceptance rounds by delivery without inventing a management list endpoint', () => {
+  it('loads acceptance rounds through the management namespace', () => {
     DeliveryApi.getDeliveryAcceptanceRounds(51)
 
     expect(request.get).toHaveBeenCalledWith({
-      url: '/data-market/deliveries/51/acceptance-rounds'
+      url: '/data-market/management/deliveries/51/acceptance-rounds'
     })
   })
 

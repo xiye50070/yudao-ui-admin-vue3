@@ -58,23 +58,48 @@ describe('data market API contracts', () => {
     })
   })
 
-  it('uploads metadata imports as multipart form data', () => {
+  it('loads the versioned clearance policy aggregate', () => {
+    SecurityApi.getAccessClearances()
+
+    expect(request.get).toHaveBeenCalledWith({
+      url: '/data-market/management/access-clearances'
+    })
+  })
+
+  it('loads standard tags as the backend list response', () => {
+    CatalogApi.getTags()
+
+    expect(request.get).toHaveBeenCalledWith({
+      url: '/data-market/management/tags'
+    })
+  })
+
+  it('uploads metadata imports with overwrite choice and an idempotency key', () => {
     const file = new File(['datasetCode'], 'datasets.xlsx')
-    MetadataApi.importMetadata(file, 9)
+    MetadataApi.importMetadata(file, true, 'metadata-import-20260731')
 
     const option = request.post.mock.calls[0][0]
     expect(option.url).toBe('/data-market/management/metadata-imports')
     expect(option.headersType).toBe('multipart/form-data')
-    expect(option.data.get('sourceSystemId')).toBe('9')
+    expect(option.headers).toEqual({ 'Idempotency-Key': 'metadata-import-20260731' })
+    expect(option.data.get('updateExisting')).toBe('true')
     expect(option.data.get('file')).toBe(file)
   })
 
-  it('maps application type to its workflow configuration endpoint', () => {
-    WorkflowApi.updateWorkflowConfig('RENEW', { processDefinitionKey: 'renew-data-market' })
+  it('maps application type and numeric status to its workflow configuration endpoint', () => {
+    WorkflowApi.updateWorkflowConfig('RENEW', {
+      processDefinitionKey: 'renew-data-market',
+      processDefinitionName: '数据市场续期',
+      status: 0
+    })
 
     expect(request.put).toHaveBeenCalledWith({
       url: '/data-market/management/workflow-configs/RENEW',
-      data: { processDefinitionKey: 'renew-data-market' }
+      data: {
+        processDefinitionKey: 'renew-data-market',
+        processDefinitionName: '数据市场续期',
+        status: 0
+      }
     })
   })
 })

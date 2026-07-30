@@ -20,8 +20,7 @@ export const updateSubjectDomain = (id: number, data: SubjectDomainVO) =>
 export const deleteSubjectDomain = (id: number) =>
   request.delete({ url: `${management}/subject-domains/${id}` })
 
-export const getTagPage = (params: PageParam & { keyword?: string }) =>
-  request.get<PageResult<TagVO>>({ url: `${management}/tags`, params })
+export const getTags = () => request.get<TagVO[]>({ url: `${management}/tags` })
 export const createTag = (data: TagVO) => request.post({ url: `${management}/tags`, data })
 export const updateTag = (id: number, data: TagVO) =>
   request.put({ url: `${management}/tags/${id}`, data })
@@ -48,7 +47,8 @@ export const updateDataset = (id: number, data: DatasetVO) =>
 export const deleteDataset = (id: number) => request.delete({ url: `${management}/datasets/${id}` })
 export const getDatasetFields = (id: number) =>
   request.get<DatasetFieldVO[]>({ url: `${management}/datasets/${id}/fields` })
-export const updateDatasetFields = (id: number, fields: DatasetFieldVO[]) =>
+export type DatasetFieldSaveReq = Omit<DatasetFieldVO, 'datasetId'>
+export const updateDatasetFields = (id: number, fields: DatasetFieldSaveReq[]) =>
   request.put({ url: `${management}/datasets/${id}/fields`, data: { fields } })
 export interface DatasetPublishReq {
   subjectDomainId: number

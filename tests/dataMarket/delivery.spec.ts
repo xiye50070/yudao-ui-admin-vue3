@@ -10,6 +10,14 @@ import * as DeliveryApi from '@/api/dataMarket/delivery'
 describe('data-market management delivery contracts', () => {
   beforeEach(() => vi.clearAllMocks())
 
+  it('loads application timelines through the management namespace', () => {
+    DeliveryApi.getApplicationTimeline(11)
+
+    expect(request.get).toHaveBeenCalledWith({
+      url: '/data-market/management/applications/11/timeline'
+    })
+  })
+
   it('creates a delivery plan under its application', () => {
     DeliveryApi.createDelivery(11, { planDescription: '交付方案', ownerUserId: 7 })
     expect(request.post).toHaveBeenCalledWith(

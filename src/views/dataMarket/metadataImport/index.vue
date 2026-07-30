@@ -18,8 +18,11 @@
   /></ContentWrap>
   <Dialog v-model="visible" title="Excel 元数据导入" width="620px"
     ><el-form label-width="110px"
-      ><el-form-item label="来源系统 ID"
-        ><el-input-number v-model="sourceSystemId" :min="1" /></el-form-item
+      ><el-form-item label="覆盖已有数据"
+        ><el-switch
+          v-model="updateExisting"
+          active-text="覆盖"
+          inactive-text="仅新增" /></el-form-item
       ><el-form-item label="Excel 文件"
         ><el-upload :auto-upload="false" :limit="1" accept=".xls,.xlsx" :on-change="selectFile"
           ><el-button>选择文件</el-button
@@ -41,15 +44,20 @@
   <Dialog v-model="resultVisible" title="导入校验结果" width="760px"
     ><el-descriptions :column="3" border
       ><el-descriptions-item label="批次号">{{ result.batchNo }}</el-descriptions-item
-      ><el-descriptions-item label="成功">{{ result.successCount || 0 }}</el-descriptions-item
-      ><el-descriptions-item label="失败">{{
-        result.failedCount || 0
+      ><el-descriptions-item label="数据集">{{ result.datasetCount }}</el-descriptions-item
+      ><el-descriptions-item label="字段">{{ result.fieldCount }}</el-descriptions-item
+      ><el-descriptions-item label="错误">{{ result.errorCount }}</el-descriptions-item
+      ><el-descriptions-item label="状态">{{
+        result.status
       }}</el-descriptions-item></el-descriptions
     ><el-table class="mt-12px" :data="result.errors || []"
-      ><el-table-column prop="rowNo" label="行号" width="90" /><el-table-column
-        prop="field"
+      ><el-table-column prop="rowNumber" label="行号" width="90" /><el-table-column
+        prop="fieldName"
         label="字段"
-        width="140" /><el-table-column prop="message" label="校验信息" /></el-table
+        width="140" /><el-table-column
+        prop="errorCode"
+        label="错误码"
+        width="140" /><el-table-column prop="errorMessage" label="校验信息" /></el-table
   ></Dialog>
 </template>
 <script setup lang="ts">
@@ -63,9 +71,16 @@ const message = useMessage()
 const visible = ref(false)
 const resultVisible = ref(false)
 const importing = ref(false)
-const sourceSystemId = ref<number>()
+const updateExisting = ref(false)
 const file = ref<File>()
-const result = ref<MetadataImportResult>({ batchNo: '' })
+const result = ref<MetadataImportResult>({
+  batchNo: '',
+  status: 'VALIDATING',
+  datasetCount: 0,
+  fieldCount: 0,
+  errorCount: 0,
+  errors: []
+})
 const selectFile = (uploadFile: { raw?: File }) => {
   file.value = uploadFile.raw
 }
@@ -77,8 +92,8 @@ const submit = async () => {
   if (!file.value) return message.warning('请选择 Excel 文件')
   importing.value = true
   try {
-    result.value = await MetadataApi.importMetadata(file.value, sourceSystemId.value)
-    if (result.value.batchNo && !result.value.errors)
+    result.value = await MetadataApi.importMetadata(file.value, updateExisting.value)
+    if (result.value.batchNo && result.value.status === 'VALIDATING')
       result.value = await MetadataApi.getMetadataImport(result.value.batchNo)
     visible.value = false
     resultVisible.value = true

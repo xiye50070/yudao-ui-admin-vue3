@@ -13,10 +13,17 @@
         <el-input-number v-model="deliveryId" :min="1" placeholder="输入交付 ID" />
       </el-form-item>
       <el-form-item>
-        <el-button type="primary" :loading="loading" @click="loadRounds">
+        <el-button
+          v-hasPermi="['data-market:acceptance:issue-query']"
+          type="primary"
+          :loading="loading"
+          @click="loadRounds"
+        >
           <Icon icon="ep:search" class="mr-5px" />查询验收问题
         </el-button>
-        <el-button @click="goMessageCenter"><Icon icon="ep:bell" class="mr-5px" />消息中心</el-button>
+        <el-button @click="goMessageCenter"
+          ><Icon icon="ep:bell" class="mr-5px" />消息中心</el-button
+        >
       </el-form-item>
       <el-form-item v-if="rounds.length">
         <el-badge :value="unresolvedIssues.length" :hidden="!unresolvedIssues.length">
@@ -33,15 +40,24 @@
         <el-descriptions-item label="轮次状态">
           <el-tag>{{ latestRound?.status }}</el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="未处理问题">{{ unresolvedIssues.length }}</el-descriptions-item>
+        <el-descriptions-item label="未处理问题">{{
+          unresolvedIssues.length
+        }}</el-descriptions-item>
       </el-descriptions>
       <el-table v-loading="loading" :data="issueRows" empty-text="当前交付暂无验收问题">
         <el-table-column prop="roundNo" label="轮次" width="80" />
         <el-table-column prop="apiName" label="API" min-width="140" />
         <el-table-column prop="issueType" label="问题类型" width="130" />
-        <el-table-column prop="description" label="问题描述" min-width="220" show-overflow-tooltip />
+        <el-table-column
+          prop="description"
+          label="问题描述"
+          min-width="220"
+          show-overflow-tooltip
+        />
         <el-table-column prop="status" label="状态" width="120">
-          <template #default="{ row }"><el-tag :type="issueTagType(row.status)">{{ row.status }}</el-tag></template>
+          <template #default="{ row }"
+            ><el-tag :type="issueTagType(row.status)">{{ row.status }}</el-tag></template
+          >
         </el-table-column>
         <el-table-column prop="assigneeUserId" label="处理人" width="100" />
         <el-table-column prop="createdAt" label="提出时间" width="180" />
@@ -61,12 +77,13 @@
       />
       <div class="mt-16px flex justify-end">
         <el-button
-          v-hasPermi="['data-market:delivery:acceptance-submit']"
+          v-hasPermi="['data-market:acceptance:submit']"
           type="success"
           :disabled="!canResubmit || submitting"
           :loading="submitting"
           @click="resubmit"
-        >再次提交统一验收</el-button>
+          >再次提交统一验收</el-button
+        >
       </div>
     </template>
   </ContentWrap>
@@ -74,14 +91,25 @@
     <el-empty v-if="!selectedIssue" description="请选择问题" />
     <template v-else>
       <el-descriptions :column="1" border>
-        <el-descriptions-item label="API">{{ selectedIssue.apiName || selectedIssue.apiId }}</el-descriptions-item>
+        <el-descriptions-item label="API">{{
+          selectedIssue.apiName || selectedIssue.apiId
+        }}</el-descriptions-item>
         <el-descriptions-item label="问题类型">{{ selectedIssue.issueType }}</el-descriptions-item>
-        <el-descriptions-item label="问题描述">{{ selectedIssue.description }}</el-descriptions-item>
+        <el-descriptions-item label="问题描述">{{
+          selectedIssue.description
+        }}</el-descriptions-item>
         <el-descriptions-item label="当前状态">{{ selectedIssue.status }}</el-descriptions-item>
-        <el-descriptions-item label="已有处理">{{ selectedIssue.resolution || '暂无' }}</el-descriptions-item>
+        <el-descriptions-item label="已有处理">{{
+          selectedIssue.resolution || '暂无'
+        }}</el-descriptions-item>
       </el-descriptions>
       <el-divider content-position="left">处理记录</el-divider>
-      <el-form ref="resolutionFormRef" :model="resolutionForm" :rules="resolutionRules" label-width="90px">
+      <el-form
+        ref="resolutionFormRef"
+        :model="resolutionForm"
+        :rules="resolutionRules"
+        label-width="90px"
+      >
         <el-form-item label="处理说明" prop="resolution">
           <el-input
             v-model="resolutionForm.resolution"
@@ -93,12 +121,13 @@
         </el-form-item>
         <el-form-item>
           <el-button
-            v-hasPermi="['data-market:acceptance-issue:resolve']"
+            v-hasPermi="['data-market:acceptance:issue-handle']"
             type="primary"
             :disabled="isClosedIssue"
             :loading="resolving"
             @click="resolve"
-          >提交处理结果</el-button>
+            >提交处理结果</el-button
+          >
         </el-form-item>
       </el-form>
     </template>
@@ -127,16 +156,22 @@ const detailVisible = ref(false)
 const selectedIssue = ref<AcceptanceIssueVO>()
 const resolutionFormRef = ref<any>()
 const resolutionForm = reactive({ resolution: '' })
-const resolutionRules = { resolution: [{ required: true, message: '请输入处理说明', trigger: 'blur' }] }
+const resolutionRules = {
+  resolution: [{ required: true, message: '请输入处理说明', trigger: 'blur' }]
+}
 const latestRound = computed(() => rounds.value[0])
 const responsiveColumns = computed(() => (width.value <= 1024 ? 1 : 3))
 const issueRows = computed(() =>
-  rounds.value.flatMap((round) => round.issues.map((issue) => ({ ...issue, roundNo: round.roundNo })))
+  rounds.value.flatMap((round) =>
+    round.issues.map((issue) => ({ ...issue, roundNo: round.roundNo }))
+  )
 )
 const unresolvedIssues = computed(() =>
   issueRows.value.filter((issue) => issue.status !== 'RESOLVED' && issue.status !== 'CLOSED')
 )
-const canResubmit = computed(() => Boolean(latestRound.value) && canResubmitAcceptance(issueRows.value))
+const canResubmit = computed(
+  () => Boolean(latestRound.value) && canResubmitAcceptance(issueRows.value)
+)
 const isClosedIssue = computed(
   () => selectedIssue.value?.status === 'RESOLVED' || selectedIssue.value?.status === 'CLOSED'
 )
@@ -144,7 +179,11 @@ const resubmitHint = computed(() =>
   canResubmit.value ? '全部问题已处理，可再次提交整包统一验收。' : '请先处理所有未关闭的验收问题。'
 )
 const issueTagType = (status: AcceptanceIssueVO['status']) =>
-  status === 'RESOLVED' || status === 'CLOSED' ? 'success' : status === 'PROCESSING' ? 'warning' : 'danger'
+  status === 'RESOLVED' || status === 'CLOSED'
+    ? 'success'
+    : status === 'PROCESSING'
+      ? 'warning'
+      : 'danger'
 const loadRounds = async () => {
   if (!deliveryId.value) return message.warning('请输入交付 ID')
   loading.value = true

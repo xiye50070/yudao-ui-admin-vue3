@@ -1,14 +1,12 @@
 import request from '@/config/axios'
-import type { AccessClearanceRule, DatasetAclRule, PrincipalType } from './types'
+import type { AccessClearancePolicy, AccessClearanceRule, DatasetAclRule } from './types'
 
 const management = '/data-market/management'
 
-export const getAccessClearances = (params?: {
-  principalType?: PrincipalType
-  principalId?: number
-}) => request.get<AccessClearanceRule[]>({ url: `${management}/access-clearances`, params })
+export const getAccessClearances = () =>
+  request.get<AccessClearancePolicy>({ url: `${management}/access-clearances` })
 export const updateAccessClearances = (rules: AccessClearanceRule[], version: number) =>
-  request.put({
+  request.put<AccessClearancePolicy>({
     url: `${management}/access-clearances`,
     data: { rules },
     headers: { 'If-Match-Version': String(version) }

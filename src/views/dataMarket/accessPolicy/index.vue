@@ -15,9 +15,9 @@
       ><el-form-item label="主体 ID"
         ><el-input-number v-model="query.principalId" :min="1" /></el-form-item
       ><el-form-item label="当前版本"
-        ><el-input-number v-model="clearanceVersion" :min="0" /></el-form-item
+        ><el-input-number v-model="clearanceVersion" :min="0" disabled /></el-form-item
       ><el-form-item
-        ><el-button @click="getList">查询许可</el-button
+        ><el-button @click="getList">刷新许可</el-button
         ><el-button
           v-hasPermi="['data-market:access-policy:update']"
           type="primary"
@@ -63,7 +63,9 @@ const clearanceVersion = ref<number>()
 const getList = async () => {
   loading.value = true
   try {
-    rules.value = await SecurityApi.getAccessClearances(query)
+    const policy = await SecurityApi.getAccessClearances()
+    rules.value = policy.rules
+    clearanceVersion.value = policy.version
   } finally {
     loading.value = false
   }
@@ -78,7 +80,9 @@ const add = () =>
 const save = async () => {
   if (rules.value.some((item) => !item.principalId)) return message.warning('主体 ID 不能为空')
   if (clearanceVersion.value === undefined) return message.warning('请输入服务端返回的当前版本')
-  await SecurityApi.updateAccessClearances(rules.value, clearanceVersion.value)
+  const policy = await SecurityApi.updateAccessClearances(rules.value, clearanceVersion.value)
+  rules.value = policy.rules
+  clearanceVersion.value = policy.version
   message.success('敏感级许可已保存')
 }
 onMounted(getList)

@@ -10,10 +10,13 @@
         prop="code"
         label="编码"
       /><el-table-column prop="description" label="说明" /><el-table-column
-        prop="visibleDatasetCount"
-        label="数据集数"
-        width="100"
+        prop="sort"
+        label="排序"
+        width="80"
       />
+      <el-table-column label="状态" width="90">
+        <template #default="{ row }">{{ row.status === 0 ? '启用' : '停用' }}</template>
+      </el-table-column>
       <el-table-column label="操作" width="150"
         ><template #default="{ row }"
           ><el-button
@@ -37,6 +40,16 @@
     ><el-form ref="formRef" :model="form" :rules="rules" label-width="90px"
       ><el-form-item label="名称" prop="name"><el-input v-model="form.name" /></el-form-item
       ><el-form-item label="编码" prop="code"><el-input v-model="form.code" /></el-form-item
+      ><el-form-item label="上级 ID"
+        ><el-input-number v-model="form.parentId" :min="0" /></el-form-item
+      ><el-form-item label="排序"><el-input-number v-model="form.sort" :min="0" /></el-form-item
+      ><el-form-item label="状态"
+        ><el-switch
+          v-model="form.status"
+          :active-value="0"
+          :inactive-value="1"
+          active-text="启用"
+          inactive-text="停用" /></el-form-item
       ><el-form-item label="说明"
         ><el-input v-model="form.description" type="textarea" /></el-form-item></el-form
     ><template #footer><el-button type="primary" @click="save">保存</el-button></template></Dialog
@@ -53,7 +66,14 @@ const loading = ref(false)
 const list = ref<SubjectDomainVO[]>([])
 const visible = ref(false)
 const formRef = ref<any>()
-const form = reactive<SubjectDomainVO>({ name: '', code: '', description: '' })
+const form = reactive<SubjectDomainVO>({
+  name: '',
+  code: '',
+  parentId: 0,
+  description: '',
+  sort: 0,
+  status: 0
+})
 const rules = {
   name: [{ required: true, message: '请输入主题域名称', trigger: 'blur' }],
   code: [{ required: true, message: '请输入主题域编码', trigger: 'blur' }]
@@ -67,7 +87,15 @@ const getList = async () => {
   }
 }
 const reset = () =>
-  Object.assign(form, { id: undefined, name: '', code: '', description: '', parentId: undefined })
+  Object.assign(form, {
+    id: undefined,
+    name: '',
+    code: '',
+    description: '',
+    parentId: 0,
+    sort: 0,
+    status: 0
+  })
 const openCreate = () => {
   reset()
   visible.value = true
