@@ -2,6 +2,7 @@ import request from '@/config/axios'
 import type {
   ApiCreateReq,
   ApiVersionCreateReq,
+  AcceptanceRoundVO,
   ApplicationDetailVO,
   ApplicationSummaryVO,
   CredentialAuthorization,
@@ -25,6 +26,8 @@ export const getApplication = (applicationId: number) =>
   request.get<ApplicationDetailVO>({ url: `${management}/applications/${applicationId}` })
 export const getApplicationTimeline = (applicationId: number) =>
   request.get<TimelineItem[]>({ url: `/data-market/applications/${applicationId}/timeline` })
+export const getDeliveryAcceptanceRounds = (deliveryId: number) =>
+  request.get<AcceptanceRoundVO[]>({ url: `/data-market/deliveries/${deliveryId}/acceptance-rounds` })
 export const createDelivery = (
   applicationId: number,
   data: DeliveryCreateReq,

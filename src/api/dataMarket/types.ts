@@ -135,7 +135,7 @@ export interface ApplicationDetailVO extends ApplicationSummaryVO {
     businessGoal: string
     expectedResult: string
   }>
-  lifecycleRequest?: Record<string, unknown>
+  lifecycleRequest?: LifecycleRequestDetail
 }
 
 export interface TimelineItem {
@@ -144,6 +144,27 @@ export interface TimelineItem {
   description?: string
   operatorName?: string
   occurredAt: string
+}
+export interface AcceptanceIssueVO {
+  id: number
+  acceptanceRoundId: number
+  apiId: number
+  apiName?: string
+  issueType: string
+  description: string
+  status: 'OPEN' | 'PROCESSING' | 'RESOLVED' | 'CLOSED'
+  assigneeUserId?: number
+  resolution?: string
+  createdAt: string
+  resolvedAt?: string
+}
+export interface AcceptanceRoundVO {
+  id: number
+  roundNo: number
+  status: 'PENDING' | 'ISSUE_REPORTED' | 'RECTIFYING' | 'RESUBMITTED' | 'ACCEPTED'
+  submittedAt: string
+  acceptedAt?: string
+  issues: AcceptanceIssueVO[]
 }
 export interface DeliveryCreateReq {
   planDescription: string
@@ -208,5 +229,20 @@ export interface LifecycleExecuteReq {
   actionDetail: string
   targetApiVersionId?: number
   affectedCredentialIds?: number[]
+  executionResult?: string
+}
+export interface LifecycleRequestDetail {
+  originalApiId: number
+  originalApiVersionId: number
+  targetApiVersionId?: number
+  desiredEffectiveAt?: string
+  requestedUseEndDate?: string
+  recentCallSummary?: string
+  impactSummary?: string
+  affectedCredentialIds?: number[]
+  confirmedEffectiveAt?: string
+  executionStatus: 'PENDING' | 'IMPACT_REVIEW' | 'SCHEDULED' | 'EXECUTING' | 'SUCCEEDED' | 'FAILED'
+  executedBy?: number
+  executedAt?: string
   executionResult?: string
 }
