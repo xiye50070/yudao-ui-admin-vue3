@@ -50,5 +50,22 @@ export const getDatasetFields = (id: number) =>
   request.get<DatasetFieldVO[]>({ url: `${management}/datasets/${id}/fields` })
 export const updateDatasetFields = (id: number, fields: DatasetFieldVO[]) =>
   request.put({ url: `${management}/datasets/${id}/fields`, data: { fields } })
-export const publishDataset = (id: number, data: { version?: number; publishNote?: string }) =>
-  request.post({ url: `${management}/datasets/${id}/publish`, data })
+export interface DatasetPublishReq {
+  subjectDomainId: number
+  tagIds: number[]
+  sensitivityLevel: number
+  businessName?: string
+  description?: string
+  publishComment?: string
+}
+
+export const publishDataset = (
+  id: number,
+  data: DatasetPublishReq,
+  idempotencyKey = crypto.randomUUID()
+) =>
+  request.post({
+    url: `${management}/datasets/${id}/publish`,
+    headers: { 'Idempotency-Key': idempotencyKey },
+    data
+  })

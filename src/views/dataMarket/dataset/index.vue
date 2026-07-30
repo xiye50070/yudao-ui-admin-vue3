@@ -46,10 +46,16 @@
             @click="openFields(row)"
             >字段</el-button
           ><el-button
+            v-hasPermi="['data-market:access-policy:update']"
+            link
+            type="primary"
+            @click="openAcl(row)"
+            >ACL</el-button
+          ><el-button
             v-hasPermi="['data-market:dataset:publish']"
             link
             type="success"
-            @click="publish(row)"
+            @click="openPublish(row)"
             >发布</el-button
           ><el-button
             v-hasPermi="['data-market:dataset:delete']"
@@ -88,12 +94,20 @@
       ><el-form-item label="说明"
         ><el-input v-model="form.description" type="textarea" /></el-form-item></el-form
     ><template #footer
-      ><el-button @click="drawer = false">取消</el-button><DatasetActions @save="save" /></template
+      ><el-button @click="drawer = false">取消</el-button
+      ><DatasetActions
+        :editing="Boolean(form.id)"
+        @save="save"
+        @publish="openPublish(form)" /></template
   ></el-drawer>
   <Dialog v-model="fieldVisible" title="字段编辑" width="760px"
     ><el-table :data="fields"
-      ><el-table-column label="字段名"
-        ><template #default="{ row }"><el-input v-model="row.name" /></template></el-table-column
+      ><el-table-column label="字段编码"
+        ><template #default="{ row }"
+          ><el-input v-model="row.fieldCode" /></template></el-table-column
+      ><el-table-column label="字段名称"
+        ><template #default="{ row }"
+          ><el-input v-model="row.fieldName" /></template></el-table-column
       ><el-table-column label="类型"
         ><template #default="{ row }"
           ><el-input v-model="row.dataType" /></template></el-table-column
@@ -114,11 +128,59 @@
       ></template
     ></Dialog
   >
+  <Dialog v-model="aclVisible" title="数据集 ACL" width="620px"
+    ><el-table :data="aclRules"
+      ><el-table-column label="主体类型"
+        ><template #default="{ row }"
+          ><el-select v-model="row.principalType"
+            ><el-option value="DEPT" label="部门" /><el-option
+              value="ROLE"
+              label="角色" /></el-select></template></el-table-column
+      ><el-table-column label="主体 ID"
+        ><template #default="{ row }"
+          ><el-input-number v-model="row.principalId" :min="1" /></template></el-table-column
+      ><el-table-column label="含子部门"
+        ><template #default="{ row }"
+          ><el-switch
+            v-model="row.includeChildDept"
+            :disabled="row.principalType === 'ROLE'" /></template></el-table-column></el-table
+    ><el-button v-hasPermi="['data-market:access-policy:update']" class="mt-12px" @click="addAcl"
+      >新增 ACL</el-button
+    ><template #footer
+      ><el-button v-hasPermi="['data-market:access-policy:update']" type="primary" @click="saveAcl"
+        >保存 ACL</el-button
+      ></template
+    ></Dialog
+  >
+  <Dialog v-model="publishVisible" title="发布数据集" width="560px"
+    ><el-form ref="publishFormRef" :model="publishForm" :rules="publishRules" label-width="100px"
+      ><el-form-item label="主题域 ID" prop="subjectDomainId"
+        ><el-input-number v-model="publishForm.subjectDomainId" :min="1" /></el-form-item
+      ><el-form-item label="标签 ID" prop="tagIdsText"
+        ><el-input
+          v-model="publishForm.tagIdsText"
+          placeholder="多个标签用逗号分隔" /></el-form-item
+      ><el-form-item label="敏感级别" prop="sensitivityLevel"
+        ><el-select v-model="publishForm.sensitivityLevel"
+          ><el-option
+            v-for="level in [0, 1, 2, 3, 4]"
+            :key="level"
+            :label="`L${level}`"
+            :value="level" /></el-select></el-form-item
+      ><el-form-item label="发布说明"
+        ><el-input v-model="publishForm.publishComment" type="textarea" /></el-form-item></el-form
+    ><template #footer
+      ><el-button v-hasPermi="['data-market:dataset:publish']" type="success" @click="publish"
+        >确认发布</el-button
+      ></template
+    ></Dialog
+  >
 </template>
 <script setup lang="ts">
 import { reactive, ref, onMounted } from 'vue'
 import * as CatalogApi from '@/api/dataMarket/catalog'
-import type { DatasetFieldVO, DatasetVO } from '@/api/dataMarket/types'
+import type { DatasetAclRule, DatasetFieldVO, DatasetVO } from '@/api/dataMarket/types'
+import * as SecurityApi from '@/api/dataMarket/security'
 import DatasetActions from './DatasetActions.vue'
 import { useMessage } from '@/hooks/web/useMessage'
 defineOptions({ name: 'DataMarketDataset' })
@@ -129,9 +191,26 @@ const total = ref(0)
 const query = reactive({ pageNo: 1, pageSize: 10, keyword: '' })
 const drawer = ref(false)
 const fieldVisible = ref(false)
+const aclVisible = ref(false)
+const publishVisible = ref(false)
 const formRef = ref<any>()
 const currentId = ref<number>()
 const fields = ref<DatasetFieldVO[]>([])
+const aclRules = ref<DatasetAclRule[]>([])
+const aclDatasetId = ref<number>()
+const publishingId = ref<number>()
+const publishFormRef = ref<any>()
+const publishForm = reactive({
+  subjectDomainId: undefined as number | undefined,
+  tagIdsText: '',
+  sensitivityLevel: 0,
+  publishComment: ''
+})
+const publishRules = {
+  subjectDomainId: [{ required: true, message: '请选择主题域', trigger: 'change' }],
+  tagIdsText: [{ required: true, message: '请输入至少一个标签 ID', trigger: 'blur' }],
+  sensitivityLevel: [{ required: true, message: '请选择敏感级别', trigger: 'change' }]
+}
 const form = reactive<DatasetVO>({
   businessName: '',
   sourceSystemId: undefined,
@@ -179,17 +258,59 @@ const openFields = async (row: DatasetVO) => {
   fields.value = row.id ? await CatalogApi.getDatasetFields(row.id) : []
   fieldVisible.value = true
 }
-const addField = () => fields.value.push({ name: '', dataType: 'varchar', sensitivityLevel: 0 })
+const openAcl = async (row: DatasetVO) => {
+  if (!row.id) return
+  aclDatasetId.value = row.id
+  aclRules.value = await SecurityApi.getDatasetAcl(row.id)
+  aclVisible.value = true
+}
+const addAcl = () =>
+  aclRules.value.push({ principalType: 'DEPT', principalId: 0, includeChildDept: false })
+const saveAcl = async () => {
+  if (!aclDatasetId.value || aclRules.value.some((item) => !item.principalId))
+    return message.warning('ACL 主体 ID 不能为空')
+  await SecurityApi.updateDatasetAcl(aclDatasetId.value, aclRules.value)
+  aclVisible.value = false
+  message.success('ACL 已保存')
+}
+const addField = () =>
+  fields.value.push({ fieldCode: '', fieldName: '', dataType: 'varchar', sensitivityLevel: 0 })
 const saveFields = async () => {
-  if (!currentId.value || fields.value.some((field) => !field.name || !field.dataType))
+  if (
+    !currentId.value ||
+    fields.value.some((field) => !field.fieldCode || !field.fieldName || !field.dataType)
+  )
     return message.warning('字段名称和类型不能为空')
   await CatalogApi.updateDatasetFields(currentId.value, fields.value)
   fieldVisible.value = false
   message.success('字段已保存')
 }
-const publish = async (row: DatasetVO) => {
-  await message.confirm(`确认发布「${row.businessName}」吗？`)
-  await CatalogApi.publishDataset(row.id!, {})
+const openPublish = (row: DatasetVO) => {
+  if (!row.id) return message.warning('请先保存数据集')
+  publishingId.value = row.id
+  Object.assign(publishForm, {
+    subjectDomainId: row.subjectDomainId,
+    tagIdsText: (row.tagIds || []).join(','),
+    sensitivityLevel: row.sensitivityLevel || 0,
+    publishComment: ''
+  })
+  publishVisible.value = true
+}
+const publish = async () => {
+  if (!(await publishFormRef.value.validate()) || !publishingId.value) return
+  await message.confirm('确认发布该数据集吗？')
+  const tagIds = publishForm.tagIdsText
+    .split(',')
+    .map((value) => Number(value.trim()))
+    .filter(Boolean)
+  if (!tagIds.length) return message.warning('请输入有效标签 ID')
+  await CatalogApi.publishDataset(publishingId.value, {
+    subjectDomainId: publishForm.subjectDomainId!,
+    tagIds,
+    sensitivityLevel: publishForm.sensitivityLevel,
+    publishComment: publishForm.publishComment
+  })
+  publishVisible.value = false
   message.success('已发布')
   getList()
 }

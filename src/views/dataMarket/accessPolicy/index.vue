@@ -14,6 +14,8 @@
             value="ROLE" /></el-select></el-form-item
       ><el-form-item label="主体 ID"
         ><el-input-number v-model="query.principalId" :min="1" /></el-form-item
+      ><el-form-item label="当前版本"
+        ><el-input-number v-model="clearanceVersion" :min="0" /></el-form-item
       ><el-form-item
         ><el-button @click="getList">查询许可</el-button
         ><el-button
@@ -57,6 +59,7 @@ const query = reactive<{ principalType?: PrincipalType; principalId?: number }>(
   principalId: undefined
 })
 const rules = ref<AccessClearanceRule[]>([])
+const clearanceVersion = ref<number>()
 const getList = async () => {
   loading.value = true
   try {
@@ -74,7 +77,8 @@ const add = () =>
   })
 const save = async () => {
   if (rules.value.some((item) => !item.principalId)) return message.warning('主体 ID 不能为空')
-  await SecurityApi.updateAccessClearances(rules.value)
+  if (clearanceVersion.value === undefined) return message.warning('请输入服务端返回的当前版本')
+  await SecurityApi.updateAccessClearances(rules.value, clearanceVersion.value)
   message.success('敏感级许可已保存')
 }
 onMounted(getList)

@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import {
-  APPLICATION_TYPE_OPTIONS,
-  dataMarketPageNames,
-  validateDatasetForm
-} from '@/views/dataMarket/shared'
+import { APPLICATION_TYPE_OPTIONS, validateDatasetForm } from '@/views/dataMarket/shared'
+import CatalogPage from '@/views/dataMarket/catalog/index.vue'
+import DomainPage from '@/views/dataMarket/domain/index.vue'
+import TagPage from '@/views/dataMarket/tag/index.vue'
+import SourceSystemPage from '@/views/dataMarket/sourceSystem/index.vue'
+import DatasetPage from '@/views/dataMarket/dataset/index.vue'
+import AccessPolicyPage from '@/views/dataMarket/accessPolicy/index.vue'
+import MetadataImportPage from '@/views/dataMarket/metadataImport/index.vue'
+import WorkflowConfigPage from '@/views/dataMarket/workflowConfig/index.vue'
 
 describe('data market workbench behavior', () => {
   it('maps all lifecycle application types to selectable workflow options', () => {
@@ -22,16 +26,25 @@ describe('data market workbench behavior', () => {
     })
   })
 
-  it('publishes menu component names for every data market page', () => {
-    expect(dataMarketPageNames).toEqual({
-      catalog: 'DataMarketCatalog',
-      domain: 'DataMarketDomain',
-      tag: 'DataMarketTag',
-      sourceSystem: 'DataMarketSourceSystem',
-      dataset: 'DataMarketDataset',
-      accessPolicy: 'DataMarketAccessPolicy',
-      metadataImport: 'DataMarketMetadataImport',
-      workflowConfig: 'DataMarketWorkflowConfig'
-    })
+  it('exposes the required component names on the dynamic menu targets', () => {
+    expect([
+      CatalogPage.name,
+      DomainPage.name,
+      TagPage.name,
+      SourceSystemPage.name,
+      DatasetPage.name,
+      AccessPolicyPage.name,
+      MetadataImportPage.name,
+      WorkflowConfigPage.name
+    ]).toEqual([
+      'DataMarketCatalog',
+      'DataMarketDomain',
+      'DataMarketTag',
+      'DataMarketSourceSystem',
+      'DataMarketDataset',
+      'DataMarketAccessPolicy',
+      'DataMarketMetadataImport',
+      'DataMarketWorkflowConfig'
+    ])
   })
 })

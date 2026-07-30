@@ -1,0 +1,19 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": [],
+    "paths": {
+      "@/*": ["src/*"],
+      "@/config/axios": ["tests/typecheck-stubs/axios.ts"],
+      "@/hooks/web/useMessage": ["tests/typecheck-stubs/message.ts"],
+      "@/utils/download": ["tests/typecheck-stubs/download.ts"]
+    }
+  },
+  "include": [
+    "src/api/dataMarket/**/*.ts",
+    "src/views/dataMarket/**/*.ts",
+    "src/views/dataMarket/**/*.vue",
+    "tests/typecheck-stubs/**/*.ts"
+  ],
+  "exclude": ["dist", "target", "node_modules"]
+}

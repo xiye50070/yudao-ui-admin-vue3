@@ -7,11 +7,11 @@ export const getAccessClearances = (params?: {
   principalType?: PrincipalType
   principalId?: number
 }) => request.get<AccessClearanceRule[]>({ url: `${management}/access-clearances`, params })
-export const updateAccessClearances = (rules: AccessClearanceRule[], version?: number) =>
+export const updateAccessClearances = (rules: AccessClearanceRule[], version: number) =>
   request.put({
     url: `${management}/access-clearances`,
     data: { rules },
-    headers: version ? { 'If-Match': String(version) } : undefined
+    headers: { 'If-Match-Version': String(version) }
   })
 export const getDatasetAcl = (datasetId: number) =>
   request.get<DatasetAclRule[]>({ url: `${management}/datasets/${datasetId}/acl` })

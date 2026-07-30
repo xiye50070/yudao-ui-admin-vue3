@@ -19,12 +19,17 @@ import * as WorkflowApi from '@/api/dataMarket/workflow'
 describe('data market API contracts', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('sends the dataset publish payload to the management endpoint', () => {
-    CatalogApi.publishDataset(42, { version: 3, publishNote: '完成字段核验' })
+  it('sends a complete idempotent dataset publish request', () => {
+    CatalogApi.publishDataset(
+      42,
+      { subjectDomainId: 4, tagIds: [7], sensitivityLevel: 2, publishComment: '完成字段核验' },
+      'publish-42'
+    )
 
     expect(request.post).toHaveBeenCalledWith({
       url: '/data-market/management/datasets/42/publish',
-      data: { version: 3, publishNote: '完成字段核验' }
+      headers: { 'Idempotency-Key': 'publish-42' },
+      data: { subjectDomainId: 4, tagIds: [7], sensitivityLevel: 2, publishComment: '完成字段核验' }
     })
   })
 
@@ -35,6 +40,21 @@ describe('data market API contracts', () => {
     expect(request.put).toHaveBeenCalledWith({
       url: '/data-market/management/datasets/42/acl',
       data: { rules }
+    })
+  })
+
+  it('uses the required optimistic lock header when updating clearances', () => {
+    SecurityApi.updateAccessClearances(
+      [{ principalType: 'DEPT', principalId: 6, maxSensitivityLevel: 2, enabled: true }],
+      0
+    )
+
+    expect(request.put).toHaveBeenCalledWith({
+      url: '/data-market/management/access-clearances',
+      headers: { 'If-Match-Version': '0' },
+      data: {
+        rules: [{ principalType: 'DEPT', principalId: 6, maxSensitivityLevel: 2, enabled: true }]
+      }
     })
   })
 

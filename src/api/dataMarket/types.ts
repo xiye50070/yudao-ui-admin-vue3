@@ -35,8 +35,8 @@ export interface SourceSystemVO {
 
 export interface DatasetFieldVO {
   id?: number
-  name: string
-  displayName?: string
+  fieldCode: string
+  fieldName: string
   dataType: string
   description?: string
   sensitivityLevel: number
@@ -54,6 +54,7 @@ export interface DatasetVO {
   subjectDomainName?: string
   description?: string
   sensitivityLevel?: number
+  tagIds?: number[]
   fieldCount?: number
   status?: string
   fields?: DatasetFieldVO[]
@@ -88,4 +89,124 @@ export interface MetadataImportResult {
   successCount?: number
   failedCount?: number
   errors?: Array<{ rowNo: number; field?: string; message: string }>
+}
+
+export interface ApplicationSummaryVO {
+  id: number
+  applicationNo: string
+  applicationType: ApplicationType
+  name: string
+  status: string
+  currentVersionNo: number
+  datasetCount?: number
+  deliveredApiCount?: number
+  updateTime: string
+}
+
+export interface ApplicationDetailVO extends ApplicationSummaryVO {
+  lockVersion: number
+  baseInfo: Record<string, unknown>
+  datasets: Array<{
+    applicationDatasetId: number
+    datasetId: number
+    datasetSnapshot: { businessName?: string; datasetCode?: string }
+    fields: Array<{
+      fieldId: number
+      fieldCode: string
+      fieldName: string
+      dataType?: string
+      sensitivityLevel: number
+      returnSelected: boolean
+      querySelected: boolean
+      queryCapabilities?: string[]
+    }>
+  }>
+  cleaningRules: Array<{
+    datasetId: number
+    fieldId: number
+    ruleTemplateId: number
+    executeOrder: number
+    customDescription?: string
+  }>
+  processingItems: Array<{
+    itemNo: number
+    datasetIds: number[]
+    fieldIds?: number[]
+    businessGoal: string
+    expectedResult: string
+  }>
+  lifecycleRequest?: Record<string, unknown>
+}
+
+export interface TimelineItem {
+  eventType: string
+  title: string
+  description?: string
+  operatorName?: string
+  occurredAt: string
+}
+export interface DeliveryCreateReq {
+  planDescription: string
+  ownerUserId: number
+  taskAssignees?: Record<string, number>
+}
+export interface ApiCreateReq {
+  name: string
+  ownerUserId: number
+  description?: string
+  effectiveAt?: string
+  expiresAt?: string
+}
+export interface ApiVersionCreateReq {
+  versionNo: string
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
+  publicBaseUrl: string
+  requestPath: string
+  authType: 'APP_KEY_SECRET' | 'API_KEY' | 'BEARER' | 'MTLS' | 'OTHER'
+  contentType: string
+  openapiDocument: Record<string, unknown>
+  rateLimitPolicy: Record<string, unknown>
+  networkPolicy: Record<string, unknown>
+  requestDescription: string
+  responseDescription: string
+  successDescription: string
+  failureDescription: string
+  lineage: Array<{
+    sourceType: 'DATASET' | 'PROCESSING_ITEM'
+    sourceId: number
+    role: 'PRIMARY' | 'INPUT' | 'LOOKUP' | 'DERIVED'
+  }>
+}
+export interface RuntimeBindingReq {
+  upstreamTargetRef: string
+  timeoutMs: number
+  tlsVerify: boolean
+  debugEnabled: boolean
+  status: 'ENABLED' | 'DISABLED'
+}
+export interface CredentialAuthorization {
+  apiVersionId: number
+  status: 'ACTIVE' | 'SUSPENDED' | 'EXPIRED' | 'REVOKED'
+  effectiveAt?: string
+  expiresAt?: string
+}
+export interface CredentialCreateReq {
+  deliveryId: number
+  apiId: number
+  name: string
+  authType: 'APP_KEY_SECRET' | 'API_KEY' | 'BEARER' | 'MTLS' | 'OTHER'
+  appKey: string
+  appSecret: string
+  authorizations: CredentialAuthorization[]
+  effectiveAt?: string
+  expiresAt?: string
+}
+export interface LifecycleExecuteReq {
+  recentCallSummary: string
+  confirmedImpactSummary: string
+  actualEffectiveAt: string
+  actionDetail: string
+  targetApiVersionId?: number
+  affectedCredentialIds?: number[]
+  executionResult?: string
 }
