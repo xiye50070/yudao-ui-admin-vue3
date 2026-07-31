@@ -6,13 +6,7 @@ import type {
 } from '@/api/dataMarket/types'
 
 const methods: ApiVersionCreateReq['method'][] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']
-const authTypes: ApiVersionCreateReq['authType'][] = [
-  'APP_KEY_SECRET',
-  'API_KEY',
-  'BEARER',
-  'MTLS',
-  'OTHER'
-]
+const authTypes: ApiVersionCreateReq['authType'][] = ['APP_KEY_SECRET', 'API_KEY', 'BEARER']
 const environments = ['DEVELOPMENT', 'TEST', 'PRODUCTION'] as const
 const stages = ['DELIVERY_PLAN', 'API_CONFIG', 'CREDENTIAL_CONFIG', 'DOCUMENTATION'] as const
 const lineageSourceTypes: ApiVersionCreateReq['lineage'][number]['sourceType'][] = [

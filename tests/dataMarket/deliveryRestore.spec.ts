@@ -182,4 +182,38 @@ describe('delivery workbench restore', () => {
       }
     })
   })
+
+  it('falls back to the supported authentication contract for legacy values', () => {
+    const aggregate = {
+      id: 51,
+      applicationId: 11,
+      deliveryNo: 'DL-2026-0051',
+      status: 'CONFIGURING',
+      planDescription: null,
+      ownerUserId: 7,
+      lockVersion: 1,
+      tasks: [],
+      apis: [
+        {
+          id: 61,
+          versions: [
+            {
+              id: 72,
+              versionNo: 'v1',
+              method: 'GET',
+              authType: 'MTLS',
+              runtimeBindings: [],
+              lineage: []
+            }
+          ],
+          credentials: [{ authType: 'OTHER', authorizations: [] }]
+        }
+      ]
+    } as unknown as DeliveryWorkbenchVO
+
+    const restored = selectDeliveryWorkbenchState(aggregate)
+
+    expect(restored.version.authType).toBe('APP_KEY_SECRET')
+    expect(restored.credential.authType).toBe('APP_KEY_SECRET')
+  })
 })

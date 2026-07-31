@@ -74,9 +74,9 @@
             ><el-select v-model="versionForm.authType"
               ><el-option label="App Key / Secret" value="APP_KEY_SECRET" /><el-option
                 label="API Key"
-                value="API_KEY" /><el-option label="Bearer" value="BEARER" /><el-option
-                label="mTLS"
-                value="MTLS" /><el-option label="其他" value="OTHER" /></el-select></el-form-item
+                value="API_KEY" /><el-option
+                label="Bearer"
+                value="BEARER" /></el-select></el-form-item
           ><el-form-item label="内容类型"
             ><el-input
               v-model="versionForm.contentType"

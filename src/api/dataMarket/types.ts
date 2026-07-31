@@ -360,7 +360,7 @@ export interface ApiVersionCreateReq {
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
   publicBaseUrl: string
   requestPath: string
-  authType: 'APP_KEY_SECRET' | 'API_KEY' | 'BEARER' | 'MTLS' | 'OTHER'
+  authType: 'APP_KEY_SECRET' | 'API_KEY' | 'BEARER'
   contentType: string
   openapiDocument: Record<string, unknown>
   rateLimitPolicy: Record<string, unknown>
@@ -392,7 +392,7 @@ export interface CredentialCreateReq {
   deliveryId: number
   apiId: number
   name: string
-  authType: 'APP_KEY_SECRET' | 'API_KEY' | 'BEARER' | 'MTLS' | 'OTHER'
+  authType: 'APP_KEY_SECRET' | 'API_KEY' | 'BEARER'
   appKey: string
   appSecret: string
   authorizations: CredentialAuthorization[]
