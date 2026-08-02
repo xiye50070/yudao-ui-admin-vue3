@@ -192,10 +192,25 @@
         ><SubjectDomainSelect
           v-model="publishForm.subjectDomainId"
           :domains="subjectDomains" /></el-form-item
-      ><el-form-item label="标签 ID" prop="tagIdsText"
-        ><el-input
-          v-model="publishForm.tagIdsText"
-          placeholder="多个标签用逗号分隔" /></el-form-item
+      ><el-form-item label="标准标签" prop="tagIds"
+        ><el-select
+          v-model="publishForm.tagIds"
+          :loading="tagLoading"
+          :disabled="tagLoading"
+          class="!w-1/1"
+          multiple
+          filterable
+          collapse-tags
+          collapse-tags-tooltip
+          placeholder="请选择标准标签"
+        >
+          <el-option
+            v-for="tag in tagOptions"
+            :key="tag.id"
+            :label="formatTagLabel(tag)"
+            :value="tag.id"
+            :disabled="tag.status !== 0"
+          /> </el-select></el-form-item
       ><el-form-item label="敏感级别" prop="sensitivityLevel"
         ><el-select v-model="publishForm.sensitivityLevel"
           ><el-option
@@ -219,7 +234,8 @@ import type {
   DatasetAclRule,
   DatasetFieldVO,
   DatasetVO,
-  SubjectDomainVO
+  SubjectDomainVO,
+  TagVO
 } from '@/api/dataMarket/types'
 import * as SecurityApi from '@/api/dataMarket/security'
 import SourceSystemSelect from '@/views/dataMarket/components/SourceSystemSelect.vue'
@@ -242,6 +258,8 @@ const fieldVisible = ref(false)
 const aclVisible = ref(false)
 const publishVisible = ref(false)
 const subjectDomains = ref<SubjectDomainVO[]>([])
+const tags = ref<TagVO[]>([])
+const tagLoading = ref(false)
 const sourceSystemOptions = ref<SourceSystemOption[]>([])
 const sourceSystemLoading = ref(false)
 const formRef = ref<any>()
@@ -252,16 +270,17 @@ const aclDatasetId = ref<number>()
 const publishingId = ref<number>()
 const publishFormRef = ref<any>()
 let subjectDomainRequest: Promise<void> | undefined
+let tagRequest: Promise<void> | undefined
 let sourceSearchSequence = 0
 const publishForm = reactive({
   subjectDomainId: undefined as number | undefined,
-  tagIdsText: '',
+  tagIds: [] as number[],
   sensitivityLevel: 1,
   publishComment: ''
 })
 const publishRules = {
   subjectDomainId: [{ required: true, message: '请选择主题域', trigger: 'change' }],
-  tagIdsText: [{ required: true, message: '请输入至少一个标签 ID', trigger: 'blur' }],
+  tagIds: [{ required: true, message: '请选择至少一个标准标签', trigger: 'change' }],
   sensitivityLevel: [{ required: true, message: '请选择敏感级别', trigger: 'change' }]
 }
 const form = reactive<DatasetVO>({
@@ -287,6 +306,9 @@ const sourceSystemNameMap = computed(
 const subjectDomainNameMap = computed(
   () => new Map(subjectDomains.value.map((item) => [item.id, item.name]))
 )
+const tagOptions = computed(() =>
+  tags.value.filter((tag): tag is TagVO & { id: number } => tag.id !== undefined)
+)
 
 const resolveSourceSystemName = (id?: number) =>
   id === undefined ? '—' : sourceSystemNameMap.value.get(id) || '已停用或不可见'
@@ -306,6 +328,25 @@ const loadSubjectDomains = () => {
       subjectDomainRequest = undefined
     })
   return subjectDomainRequest
+}
+
+const formatTagLabel = (tag: Pick<TagVO, 'name' | 'code'>) => `${tag.name}（${tag.code}）`
+
+const loadTags = () => {
+  if (tagRequest) return tagRequest
+  tagLoading.value = true
+  tagRequest = CatalogApi.getTags()
+    .then((data) => {
+      tags.value = data
+    })
+    .catch(() => {
+      message.error('标准标签数据加载失败，请重试')
+    })
+    .finally(() => {
+      tagLoading.value = false
+      tagRequest = undefined
+    })
+  return tagRequest
 }
 
 const searchSourceSystems = async (keyword = '') => {
@@ -406,11 +447,11 @@ const saveFields = async () => {
 }
 const openPublish = async (row: DatasetVO) => {
   if (!row.id) return message.warning('请先保存数据集')
-  await loadSubjectDomains()
+  await Promise.all([loadSubjectDomains(), loadTags()])
   publishingId.value = row.id
   Object.assign(publishForm, {
     subjectDomainId: row.subjectDomainId,
-    tagIdsText: (row.tagIds || []).join(','),
+    tagIds: [...(row.tagIds || [])],
     sensitivityLevel: row.sensitivityLevel || 1,
     publishComment: ''
   })
@@ -419,14 +460,9 @@ const openPublish = async (row: DatasetVO) => {
 const publish = async () => {
   if (!(await publishFormRef.value.validate()) || !publishingId.value) return
   await message.confirm('确认发布该数据集吗？')
-  const tagIds = publishForm.tagIdsText
-    .split(',')
-    .map((value) => Number(value.trim()))
-    .filter(Boolean)
-  if (!tagIds.length) return message.warning('请输入有效标签 ID')
   await CatalogApi.publishDataset(publishingId.value, {
     subjectDomainId: publishForm.subjectDomainId!,
-    tagIds,
+    tagIds: [...publishForm.tagIds],
     sensitivityLevel: publishForm.sensitivityLevel,
     publishComment: publishForm.publishComment
   })

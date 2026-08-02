@@ -3,6 +3,7 @@ import { fireEvent, render, waitFor } from '@testing-library/vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import DomainPage from '@/views/dataMarket/domain/index.vue'
 import DatasetPage from '@/views/dataMarket/dataset/index.vue'
+import datasetPageSource from '@/views/dataMarket/dataset/index.vue?raw'
 import SourceSystemPage from '@/views/dataMarket/sourceSystem/index.vue'
 
 const catalogMocks = vi.hoisted(() => ({
@@ -163,5 +164,13 @@ describe('data-market reference selector page wiring', () => {
 
     await waitFor(() => expect(catalogMocks.getSubjectDomainList).toHaveBeenCalledTimes(2))
     expect(dataset.getAllByTestId('subject-domain-select')[0]).toHaveTextContent('客户')
+  })
+
+  it('uses a standard-tag multi-select instead of accepting raw tag IDs', () => {
+    expect(datasetPageSource).toContain('label="标准标签" prop="tagIds"')
+    expect(datasetPageSource).toContain('v-model="publishForm.tagIds"')
+    expect(datasetPageSource).toContain('placeholder="请选择标准标签"')
+    expect(datasetPageSource).toContain('multiple')
+    expect(datasetPageSource).not.toContain('tagIdsText')
   })
 })
