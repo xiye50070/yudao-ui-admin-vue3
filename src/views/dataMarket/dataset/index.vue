@@ -24,11 +24,15 @@
       ><el-table-column prop="businessName" label="数据集名称" /><el-table-column
         prop="datasetCode"
         label="编码"
-      /><el-table-column prop="sourceSystemId" label="来源系统 ID" width="120" /><el-table-column
-        prop="subjectDomainId"
-        label="主题域 ID"
-        width="110"
-      /><el-table-column prop="sensitivityLevel" label="敏感级" width="90" /><el-table-column
+      /><el-table-column label="来源系统" min-width="140"
+        ><template #default="{ row }">{{
+          row.sourceSystemName || resolveSourceSystemName(row.sourceSystemId)
+        }}</template></el-table-column
+      ><el-table-column label="业务主题域" min-width="140"
+        ><template #default="{ row }">{{
+          row.subjectDomainName || resolveSubjectDomainName(row.subjectDomainId)
+        }}</template></el-table-column
+      ><el-table-column prop="sensitivityLevel" label="敏感级" width="90" /><el-table-column
         label="状态"
         width="100"
         ><template #default="{ row }">{{
@@ -82,14 +86,17 @@
       ><el-form-item label="数据集编码" prop="datasetCode"
         ><el-input v-model="form.datasetCode" /></el-form-item
       ><el-form-item label="来源系统" prop="sourceSystemId"
-        ><el-input-number
+        ><SourceSystemSelect
           v-model="form.sourceSystemId"
-          :min="1"
-          placeholder="请输入来源系统 ID" /></el-form-item
+          :options="sourceSystemOptions"
+          :loading="sourceSystemLoading"
+          @search="searchSourceSystems" /></el-form-item
       ><el-form-item label="物理表名" prop="physicalName"
         ><el-input v-model="form.physicalName" /></el-form-item
-      ><el-form-item label="主题域 ID" prop="subjectDomainId"
-        ><el-input-number v-model="form.subjectDomainId" :min="1" /></el-form-item
+      ><el-form-item label="业务主题域" prop="subjectDomainId"
+        ><SubjectDomainSelect
+          v-model="form.subjectDomainId"
+          :domains="subjectDomains" /></el-form-item
       ><el-form-item label="敏感级别" prop="sensitivityLevel"
         ><el-select v-model="form.sensitivityLevel"
           ><el-option
@@ -181,8 +188,10 @@
   >
   <Dialog v-model="publishVisible" title="发布数据集" width="560px"
     ><el-form ref="publishFormRef" :model="publishForm" :rules="publishRules" label-width="100px"
-      ><el-form-item label="主题域 ID" prop="subjectDomainId"
-        ><el-input-number v-model="publishForm.subjectDomainId" :min="1" /></el-form-item
+      ><el-form-item label="业务主题域" prop="subjectDomainId"
+        ><SubjectDomainSelect
+          v-model="publishForm.subjectDomainId"
+          :domains="subjectDomains" /></el-form-item
       ><el-form-item label="标签 ID" prop="tagIdsText"
         ><el-input
           v-model="publishForm.tagIdsText"
@@ -204,10 +213,21 @@
   >
 </template>
 <script setup lang="ts">
-import { reactive, ref, onMounted } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import * as CatalogApi from '@/api/dataMarket/catalog'
-import type { DatasetAclRule, DatasetFieldVO, DatasetVO } from '@/api/dataMarket/types'
+import type {
+  DatasetAclRule,
+  DatasetFieldVO,
+  DatasetVO,
+  SubjectDomainVO
+} from '@/api/dataMarket/types'
 import * as SecurityApi from '@/api/dataMarket/security'
+import SourceSystemSelect from '@/views/dataMarket/components/SourceSystemSelect.vue'
+import SubjectDomainSelect from '@/views/dataMarket/components/SubjectDomainSelect.vue'
+import {
+  mergeSourceSystemOptions,
+  type SourceSystemOption
+} from '@/views/dataMarket/referenceSelectors'
 import DatasetActions from './DatasetActions.vue'
 import { createEmptyDatasetField, toDatasetFieldSaveReq } from './contracts'
 import { useMessage } from '@/hooks/web/useMessage'
@@ -221,6 +241,9 @@ const drawer = ref(false)
 const fieldVisible = ref(false)
 const aclVisible = ref(false)
 const publishVisible = ref(false)
+const subjectDomains = ref<SubjectDomainVO[]>([])
+const sourceSystemOptions = ref<SourceSystemOption[]>([])
+const sourceSystemLoading = ref(false)
 const formRef = ref<any>()
 const currentId = ref<number>()
 const fields = ref<DatasetFieldVO[]>([])
@@ -228,6 +251,8 @@ const aclRules = ref<DatasetAclRule[]>([])
 const aclDatasetId = ref<number>()
 const publishingId = ref<number>()
 const publishFormRef = ref<any>()
+let subjectDomainRequest: Promise<void> | undefined
+let sourceSearchSequence = 0
 const publishForm = reactive({
   subjectDomainId: undefined as number | undefined,
   tagIdsText: '',
@@ -256,6 +281,48 @@ const rules = {
   subjectDomainId: [{ required: true, message: '请选择主题域', trigger: 'change' }],
   sensitivityLevel: [{ required: true, message: '请选择敏感级别', trigger: 'change' }]
 }
+const sourceSystemNameMap = computed(
+  () => new Map(sourceSystemOptions.value.map((item) => [item.id, item.name]))
+)
+const subjectDomainNameMap = computed(
+  () => new Map(subjectDomains.value.map((item) => [item.id, item.name]))
+)
+
+const resolveSourceSystemName = (id?: number) =>
+  id === undefined ? '—' : sourceSystemNameMap.value.get(id) || '已停用或不可见'
+const resolveSubjectDomainName = (id?: number) =>
+  id === undefined ? '—' : subjectDomainNameMap.value.get(id) || '已停用或不可见'
+
+const loadSubjectDomains = () => {
+  if (subjectDomains.value.length) return Promise.resolve()
+  if (subjectDomainRequest) return subjectDomainRequest
+  subjectDomainRequest = CatalogApi.getSubjectDomainList()
+    .then((data) => {
+      subjectDomains.value = data
+    })
+    .catch(() => {
+      message.error('主题域数据加载失败，请重试')
+    })
+    .finally(() => {
+      subjectDomainRequest = undefined
+    })
+  return subjectDomainRequest
+}
+
+const searchSourceSystems = async (keyword = '') => {
+  const sequence = ++sourceSearchSequence
+  sourceSystemLoading.value = true
+  try {
+    const page = await CatalogApi.getSourceSystemPage({ pageNo: 1, pageSize: 50, keyword })
+    if (sequence !== sourceSearchSequence) return
+    const current = sourceSystemOptions.value.filter((item) => item.id === form.sourceSystemId)
+    sourceSystemOptions.value = mergeSourceSystemOptions(current, page.list)
+  } catch {
+    if (sequence === sourceSearchSequence) message.error('来源系统数据加载失败，请重试')
+  } finally {
+    if (sequence === sourceSearchSequence) sourceSystemLoading.value = false
+  }
+}
 const getList = async () => {
   loading.value = true
   try {
@@ -277,7 +344,25 @@ const openDrawer = async (row?: DatasetVO) => {
     sensitivityLevel: 1,
     description: ''
   })
-  if (row?.id) Object.assign(form, await CatalogApi.getDataset(row.id))
+  await Promise.all([
+    loadSubjectDomains(),
+    sourceSystemOptions.value.length ? Promise.resolve() : searchSourceSystems()
+  ])
+  if (row?.id) {
+    const detail = await CatalogApi.getDataset(row.id)
+    Object.assign(form, detail)
+    if (
+      detail.sourceSystemId &&
+      !sourceSystemOptions.value.some((item) => item.id === detail.sourceSystemId)
+    ) {
+      sourceSystemOptions.value = mergeSourceSystemOptions(sourceSystemOptions.value, [
+        {
+          id: detail.sourceSystemId,
+          name: detail.sourceSystemName || '已停用或不可见'
+        }
+      ])
+    }
+  }
   drawer.value = true
 }
 const save = async () => {
@@ -320,8 +405,9 @@ const saveFields = async () => {
   fieldVisible.value = false
   message.success('字段已保存')
 }
-const openPublish = (row: DatasetVO) => {
+const openPublish = async (row: DatasetVO) => {
   if (!row.id) return message.warning('请先保存数据集')
+  await loadSubjectDomains()
   publishingId.value = row.id
   Object.assign(publishForm, {
     subjectDomainId: row.subjectDomainId,
@@ -355,5 +441,9 @@ const remove = async (id: number) => {
   message.success('删除成功')
   getList()
 }
-onMounted(getList)
+onMounted(() => {
+  getList()
+  loadSubjectDomains()
+  searchSourceSystems()
+})
 </script>

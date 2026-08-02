@@ -2,11 +2,17 @@ import { defineComponent } from 'vue'
 import { render, waitFor } from '@testing-library/vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import DomainPage from '@/views/dataMarket/domain/index.vue'
+import DatasetPage from '@/views/dataMarket/dataset/index.vue'
 import SourceSystemPage from '@/views/dataMarket/sourceSystem/index.vue'
 
 const catalogMocks = vi.hoisted(() => ({
   getSubjectDomainList: vi.fn(),
   getSourceSystemPage: vi.fn(),
+  getDatasetPage: vi.fn(),
+  getDataset: vi.fn(),
+  createDataset: vi.fn(),
+  updateDataset: vi.fn(),
+  publishDataset: vi.fn(),
   createSubjectDomain: vi.fn(),
   updateSubjectDomain: vi.fn(),
   deleteSubjectDomain: vi.fn(),
@@ -62,10 +68,16 @@ const UserDepartmentSelectStub = defineComponent({
   template: '<div data-testid="user-department-select"></div>'
 })
 
+const SourceSystemSelectStub = defineComponent({
+  name: 'SourceSystemSelect',
+  template: '<div data-testid="source-system-select"></div>'
+})
+
 const global = {
   stubs: {
     ContentWrap: SlotStub,
     Dialog: SlotStub,
+    ElDrawer: SlotStub,
     ElForm: SlotStub,
     ElFormItem: SlotStub,
     ElTable: true,
@@ -74,11 +86,16 @@ const global = {
     ElInput: true,
     ElInputNumber: true,
     ElSwitch: true,
+    ElSelect: true,
+    ElOption: true,
+    ElAlert: true,
     Pagination: true,
+    DatasetActions: true,
     Icon: true,
     SubjectDomainSelect: SubjectDomainSelectStub,
     DepartmentCascader: DepartmentCascaderStub,
-    UserDepartmentSelect: UserDepartmentSelectStub
+    UserDepartmentSelect: UserDepartmentSelectStub,
+    SourceSystemSelect: SourceSystemSelectStub
   },
   directives: {
     hasPermi: () => undefined,
@@ -91,6 +108,7 @@ describe('data-market reference selector page wiring', () => {
     vi.clearAllMocks()
     catalogMocks.getSubjectDomainList.mockResolvedValue(domains)
     catalogMocks.getSourceSystemPage.mockResolvedValue({ list: [], total: 0 })
+    catalogMocks.getDatasetPage.mockResolvedValue({ list: [], total: 0 })
     deptMocks.getSimpleDeptList.mockResolvedValue(departments)
     userMocks.getSimpleUserList.mockResolvedValue(users)
   })
@@ -108,5 +126,12 @@ describe('data-market reference selector page wiring', () => {
     await waitFor(() => expect(catalogMocks.getSourceSystemPage).toHaveBeenCalled())
     expect(source.getByTestId('department-cascader')).toBeInTheDocument()
     expect(source.getByTestId('user-department-select')).toBeInTheDocument()
+  })
+
+  it('uses source-system and subject-domain selectors on dataset forms', async () => {
+    const dataset = render(DatasetPage, { global })
+    await waitFor(() => expect(catalogMocks.getDatasetPage).toHaveBeenCalled())
+    expect(dataset.getByTestId('source-system-select')).toBeInTheDocument()
+    expect(dataset.getAllByTestId('subject-domain-select')).toHaveLength(2)
   })
 })
