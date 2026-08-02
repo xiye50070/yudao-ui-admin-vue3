@@ -40,8 +40,13 @@
     ><el-form ref="formRef" :model="form" :rules="rules" label-width="90px"
       ><el-form-item label="名称" prop="name"><el-input v-model="form.name" /></el-form-item
       ><el-form-item label="编码" prop="code"><el-input v-model="form.code" /></el-form-item
-      ><el-form-item label="上级 ID"
-        ><el-input-number v-model="form.parentId" :min="0" /></el-form-item
+      ><el-form-item label="上级主题域" prop="parentId"
+        ><SubjectDomainSelect
+          v-model="form.parentId"
+          :domains="list"
+          :exclude-branch-id="form.id"
+          allow-top-level
+          placeholder="请选择上级主题域" /></el-form-item
       ><el-form-item label="排序"><el-input-number v-model="form.sort" :min="0" /></el-form-item
       ><el-form-item label="状态"
         ><el-switch
@@ -60,6 +65,7 @@ import { reactive, ref, onMounted } from 'vue'
 import * as CatalogApi from '@/api/dataMarket/catalog'
 import type { SubjectDomainVO } from '@/api/dataMarket/types'
 import { useMessage } from '@/hooks/web/useMessage'
+import SubjectDomainSelect from '@/views/dataMarket/components/SubjectDomainSelect.vue'
 defineOptions({ name: 'DataMarketDomain' })
 const message = useMessage()
 const loading = ref(false)
@@ -76,7 +82,8 @@ const form = reactive<SubjectDomainVO>({
 })
 const rules = {
   name: [{ required: true, message: '请输入主题域名称', trigger: 'blur' }],
-  code: [{ required: true, message: '请输入主题域编码', trigger: 'blur' }]
+  code: [{ required: true, message: '请输入主题域编码', trigger: 'blur' }],
+  parentId: [{ required: true, message: '请选择上级主题域', trigger: 'change' }]
 }
 const getList = async () => {
   loading.value = true
