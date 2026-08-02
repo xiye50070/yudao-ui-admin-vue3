@@ -5,6 +5,7 @@ import DepartmentCascader from '@/views/dataMarket/components/DepartmentCascader
 import SourceSystemSelect from '@/views/dataMarket/components/SourceSystemSelect.vue'
 import SubjectDomainSelect from '@/views/dataMarket/components/SubjectDomainSelect.vue'
 import UserDepartmentSelect from '@/views/dataMarket/components/UserDepartmentSelect.vue'
+import userDepartmentSelectSource from '@/views/dataMarket/components/UserDepartmentSelect.vue?raw'
 
 const domains = [
   { id: 1, name: '经营', code: 'BIZ', parentId: 0, sort: 1, status: 0 },
@@ -78,6 +79,12 @@ const OptionStub = defineComponent({
 })
 
 describe('data-market reference selector components', () => {
+  it('lets the owner lookup columns wrap with the available container width', () => {
+    expect(userDepartmentSelectSource).toContain(
+      'grid-template-columns: repeat(auto-fit, minmax(180px, 1fr))'
+    )
+  })
+
   it('emits scalar IDs and exposes hierarchy options', async () => {
     const subject = render(SubjectDomainSelect, {
       props: { modelValue: 0, domains, allowTopLevel: true },

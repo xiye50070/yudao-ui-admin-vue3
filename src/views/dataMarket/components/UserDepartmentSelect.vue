@@ -89,7 +89,7 @@ const getUserLabel = (user: UserVO) => {
 <style scoped>
 .user-department-select {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 8px;
   width: 100%;
 }
@@ -102,11 +102,5 @@ const getUserLabel = (user: UserVO) => {
 
 .user-option__account {
   color: var(--el-text-color-secondary);
-}
-
-@media (max-width: 720px) {
-  .user-department-select {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 </style>
