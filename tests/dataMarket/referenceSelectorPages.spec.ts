@@ -1,5 +1,5 @@
 import { defineComponent } from 'vue'
-import { render, waitFor } from '@testing-library/vue'
+import { fireEvent, render, waitFor } from '@testing-library/vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import DomainPage from '@/views/dataMarket/domain/index.vue'
 import DatasetPage from '@/views/dataMarket/dataset/index.vue'
@@ -59,9 +59,14 @@ const FormStub = defineComponent({
 
 const SubjectDomainSelectStub = defineComponent({
   name: 'SubjectDomainSelect',
-  props: { allowTopLevel: Boolean },
+  props: { allowTopLevel: Boolean, domains: { type: Array, default: () => [] } },
   template:
-    '<div data-testid="subject-domain-select" :data-allow-top-level="allowTopLevel ? \'true\' : \'false\'"></div>'
+    "<div data-testid=\"subject-domain-select\" :data-allow-top-level=\"allowTopLevel ? 'true' : 'false'\">{{ domains.map((item) => item.name).join(',') }}</div>"
+})
+
+const ButtonStub = defineComponent({
+  emits: ['click'],
+  template: '<button @click="$emit(\'click\')"><slot /></button>'
 })
 
 const DepartmentCascaderStub = defineComponent({
@@ -88,7 +93,7 @@ const global = {
     ElFormItem: SlotStub,
     ElTable: true,
     ElTableColumn: true,
-    ElButton: true,
+    ElButton: ButtonStub,
     ElInput: true,
     ElInputNumber: true,
     ElSwitch: true,
@@ -140,5 +145,23 @@ describe('data-market reference selector page wiring', () => {
     await waitFor(() => expect(catalogMocks.getDatasetPage).toHaveBeenCalled())
     expect(dataset.getByTestId('source-system-select')).toBeInTheDocument()
     expect(dataset.getAllByTestId('subject-domain-select')).toHaveLength(2)
+  })
+
+  it('refreshes subject domains whenever the dataset drawer opens', async () => {
+    catalogMocks.getSubjectDomainList
+      .mockResolvedValueOnce([domains[0]])
+      .mockResolvedValueOnce(domains)
+
+    const dataset = render(DatasetPage, { global })
+    await waitFor(() => {
+      expect(catalogMocks.getSubjectDomainList).toHaveBeenCalledTimes(1)
+      expect(dataset.getAllByTestId('subject-domain-select')[0]).toHaveTextContent('经营')
+      expect(dataset.getAllByTestId('subject-domain-select')[0]).not.toHaveTextContent('客户')
+    })
+
+    await fireEvent.click(dataset.getByRole('button', { name: '新增数据集' }))
+
+    await waitFor(() => expect(catalogMocks.getSubjectDomainList).toHaveBeenCalledTimes(2))
+    expect(dataset.getAllByTestId('subject-domain-select')[0]).toHaveTextContent('客户')
   })
 })

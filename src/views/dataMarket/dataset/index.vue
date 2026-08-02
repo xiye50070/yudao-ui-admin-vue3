@@ -294,7 +294,6 @@ const resolveSubjectDomainName = (id?: number) =>
   id === undefined ? '—' : subjectDomainNameMap.value.get(id) || '已停用或不可见'
 
 const loadSubjectDomains = () => {
-  if (subjectDomains.value.length) return Promise.resolve()
   if (subjectDomainRequest) return subjectDomainRequest
   subjectDomainRequest = CatalogApi.getSubjectDomainList()
     .then((data) => {
