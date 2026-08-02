@@ -37,7 +37,7 @@
     </el-table>
   </ContentWrap>
   <Dialog v-model="visible" :title="form.id ? '编辑主题域' : '新增主题域'"
-    ><el-form ref="formRef" :model="form" :rules="rules" label-width="90px"
+    ><el-form ref="formRef" :model="form" :rules="rules" label-width="110px"
       ><el-form-item label="名称" prop="name"><el-input v-model="form.name" /></el-form-item
       ><el-form-item label="编码" prop="code"><el-input v-model="form.code" /></el-form-item
       ><el-form-item label="上级主题域" prop="parentId"

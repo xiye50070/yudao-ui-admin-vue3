@@ -51,6 +51,12 @@ const SlotStub = defineComponent({
   template: '<div><slot /><slot name="footer" /></div>'
 })
 
+const FormStub = defineComponent({
+  props: { labelWidth: String },
+  template:
+    '<div data-testid="el-form" :data-label-width="labelWidth"><slot /><slot name="footer" /></div>'
+})
+
 const SubjectDomainSelectStub = defineComponent({
   name: 'SubjectDomainSelect',
   props: { allowTopLevel: Boolean },
@@ -78,7 +84,7 @@ const global = {
     ContentWrap: SlotStub,
     Dialog: SlotStub,
     ElDrawer: SlotStub,
-    ElForm: SlotStub,
+    ElForm: FormStub,
     ElFormItem: SlotStub,
     ElTable: true,
     ElTableColumn: true,
@@ -120,6 +126,7 @@ describe('data-market reference selector page wiring', () => {
       'data-allow-top-level',
       'true'
     )
+    expect(domain.getByTestId('el-form')).toHaveAttribute('data-label-width', '110px')
     domain.unmount()
 
     const source = render(SourceSystemPage, { global })
