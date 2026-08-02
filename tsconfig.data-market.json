@@ -13,6 +13,7 @@
     "src/api/dataMarket/**/*.ts",
     "src/views/dataMarket/**/*.ts",
     "src/views/dataMarket/**/*.vue",
+    "types/global.d.ts",
     "tests/typecheck-stubs/**/*.ts"
   ],
   "exclude": ["dist", "target", "node_modules"]
