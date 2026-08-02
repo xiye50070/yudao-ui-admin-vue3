@@ -173,4 +173,11 @@ describe('data-market reference selector page wiring', () => {
     expect(datasetPageSource).toContain('multiple')
     expect(datasetPageSource).not.toContain('tagIdsText')
   })
+
+  it('identifies the source column name without presenting it as a system ID', () => {
+    expect(datasetPageSource).toContain('label="物理字段名"')
+    expect(datasetPageSource).toContain('placeholder="例如 EMPLOYEE_ID"')
+    expect(datasetPageSource).toContain('并非系统主键 ID')
+    expect(datasetPageSource).not.toContain('label="字段编码"')
+  })
 })

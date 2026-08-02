@@ -115,18 +115,20 @@
   ></el-drawer>
   <Dialog v-model="fieldVisible" title="字段编辑" width="min(1280px, 96vw)"
     ><el-alert
-      title="可返回、可查询由申请人按申请单选择；此处只维护数据表字段元数据。"
+      title="物理字段名对应来源数据表的列名（例如 EMPLOYEE_ID），并非系统主键 ID；可返回、可查询由申请人按申请单选择。"
       type="info"
       :closable="false"
       class="mb-12px"
     />
     <el-table :data="fields"
-      ><el-table-column label="字段编码"
+      ><el-table-column label="物理字段名" min-width="150"
         ><template #default="{ row }"
-          ><el-input v-model="row.fieldCode" /></template></el-table-column
-      ><el-table-column label="字段名称"
+          ><el-input v-model="row.fieldCode" placeholder="例如 EMPLOYEE_ID" /></template
+      ></el-table-column>
+      <el-table-column label="业务名称" min-width="150"
         ><template #default="{ row }"
-          ><el-input v-model="row.fieldName" /></template></el-table-column
+          ><el-input v-model="row.fieldName" placeholder="例如 员工编号" /></template
+      ></el-table-column>
       ><el-table-column label="类型"
         ><template #default="{ row }"
           ><el-input v-model="row.dataType" /></template></el-table-column
