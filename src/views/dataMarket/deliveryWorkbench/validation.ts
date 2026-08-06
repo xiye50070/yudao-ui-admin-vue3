@@ -8,7 +8,6 @@ export type ApiVersionDraft = {
   responseDescription: string
   successDescription: string
   failureDescription: string
-  lineage: Array<unknown>
 }
 
 export function validateApiVersionDraft(draft: ApiVersionDraft) {
@@ -27,6 +26,5 @@ export function validateApiVersionDraft(draft: ApiVersionDraft) {
   if (!draft.responseDescription.trim()) errors.responseDescription = '请填写响应说明'
   if (!draft.successDescription.trim()) errors.successDescription = '请填写成功说明'
   if (!draft.failureDescription.trim()) errors.failureDescription = '请填写失败说明'
-  if (!draft.lineage.length) errors.lineage = '请选择真实数据来源'
   return errors
 }

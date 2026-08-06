@@ -89,7 +89,7 @@
       <el-steps :active="wizardStep" finish-status="success" align-center class="mb-28px">
         <el-step title="API 基本信息" />
         <el-step title="版本与接口契约" />
-        <el-step title="运行绑定与血缘" />
+        <el-step title="运行策略与绑定" />
         <el-step title="凭证与授权" />
         <el-step title="确认创建" />
       </el-steps>
@@ -198,69 +198,59 @@
           <div class="wizard-heading">
             <span class="wizard-index">3</span>
             <div>
-              <h3>运行绑定与血缘</h3>
-              <p>配置运行环境、上游引用、访问策略和真实数据来源。</p>
+              <h3>运行策略与绑定</h3>
+              <p>通过结构化选项配置访问策略、运行环境和上游目标引用。</p>
             </div>
           </div>
           <el-form label-position="top" class="wizard-form">
-            <div class="form-grid form-grid-2">
-              <el-form-item label="限流策略（JSON）" required>
-                <el-input
-                  v-model="rateLimitPolicyDocument"
-                  type="textarea"
-                  :rows="6"
-                  class="json-input"
-                />
-              </el-form-item>
-              <el-form-item label="网络策略（JSON）" required>
-                <el-input
-                  v-model="networkPolicyDocument"
-                  type="textarea"
-                  :rows="6"
-                  class="json-input"
-                />
-              </el-form-item>
-            </div>
-            <div class="lineage-editor">
-              <div class="form-grid lineage-grid">
-                <el-form-item label="血缘类型">
-                  <el-select v-model="lineageSourceType" class="!w-100%">
-                    <el-option label="数据集" value="DATASET" />
-                    <el-option label="加工项" value="PROCESSING_ITEM" />
+            <div class="runtime-policy-grid">
+              <div class="policy-card">
+                <div class="policy-card-title">限流策略</div>
+                <div class="form-grid policy-field-grid">
+                  <el-form-item label="请求额度" required>
+                    <el-input-number
+                      v-model="rateLimitPolicy.quota"
+                      :min="1"
+                      :max="1000000"
+                      :precision="0"
+                      controls-position="right"
+                      class="!w-100%"
+                    />
+                  </el-form-item>
+                  <el-form-item label="计量周期" required>
+                    <el-select v-model="rateLimitPolicy.unit" class="!w-100%">
+                      <el-option label="每秒" value="SECOND" />
+                      <el-option label="每分钟" value="MINUTE" />
+                      <el-option label="每小时" value="HOUR" />
+                      <el-option label="每天" value="DAY" />
+                    </el-select>
+                  </el-form-item>
+                </div>
+              </div>
+              <div class="policy-card">
+                <div class="policy-card-title">网络策略</div>
+                <el-form-item label="访问范围" required>
+                  <el-select v-model="networkPolicy.accessMode" class="!w-100%">
+                    <el-option label="不限制来源" value="ALL" />
+                    <el-option label="仅允许指定网段" value="CIDR_ALLOWLIST" />
                   </el-select>
                 </el-form-item>
-                <el-form-item label="来源 ID">
-                  <el-input-number
-                    v-model="lineageSourceId"
-                    :min="1"
-                    controls-position="right"
+                <el-form-item
+                  v-if="networkPolicy.accessMode === 'CIDR_ALLOWLIST'"
+                  label="允许网段"
+                  required
+                >
+                  <el-select
+                    v-model="networkPolicy.allowedCidrs"
+                    multiple
+                    filterable
+                    allow-create
+                    default-first-option
                     class="!w-100%"
+                    placeholder="输入 CIDR 后按回车，例如 10.0.0.0/8"
                   />
                 </el-form-item>
-                <el-form-item label="血缘角色">
-                  <el-select v-model="lineageRole" class="!w-100%">
-                    <el-option label="主来源" value="PRIMARY" />
-                    <el-option label="输入" value="INPUT" />
-                    <el-option label="查询" value="LOOKUP" />
-                    <el-option label="派生" value="DERIVED" />
-                  </el-select>
-                </el-form-item>
-                <el-form-item label=" ">
-                  <el-button class="!w-100%" @click="addLineage">添加血缘</el-button>
-                </el-form-item>
               </div>
-              <el-table :data="lineages" size="small" empty-text="请添加至少一个真实数据来源">
-                <el-table-column prop="sourceType" label="类型" />
-                <el-table-column prop="sourceId" label="来源 ID" />
-                <el-table-column prop="role" label="角色" />
-                <el-table-column label="操作" width="80">
-                  <template #default="{ $index }">
-                    <el-button link type="danger" @click="lineages.splice($index, 1)"
-                      >删除</el-button
-                    >
-                  </template>
-                </el-table-column>
-              </el-table>
             </div>
             <el-divider content-position="left">运行绑定</el-divider>
             <div class="form-grid form-grid-3">
@@ -285,7 +275,14 @@
               </el-form-item>
             </div>
             <el-form-item label="受保护上游引用" required>
-              <el-input v-model="binding.upstreamTargetRef" placeholder="secret://orders-test" />
+              <el-input
+                v-model="binding.upstreamTargetRef"
+                placeholder="例如 orders-test（不要填写 URL）"
+              />
+              <div class="form-help">
+                填写服务端 yudao.data-market.debug.targets
+                下已经配置的引用键，实际地址只保存在服务端。
+              </div>
             </el-form-item>
           </el-form>
         </section>
@@ -343,7 +340,10 @@
             <el-descriptions-item label="上游引用">{{
               binding.upstreamTargetRef
             }}</el-descriptions-item>
-            <el-descriptions-item label="血缘数量">{{ lineages.length }} 项</el-descriptions-item>
+            <el-descriptions-item label="限流策略"
+              >{{ rateLimitPolicy.quota }} 次 / {{ rateLimitUnitLabel }}</el-descriptions-item
+            >
+            <el-descriptions-item label="网络策略">{{ networkPolicyLabel }}</el-descriptions-item>
             <el-descriptions-item label="凭证名称">{{ credential.name }}</el-descriptions-item>
             <el-descriptions-item label="认证方式">{{ credential.authType }}</el-descriptions-item>
             <el-descriptions-item label="API 说明" :span="2">{{
@@ -433,6 +433,12 @@ import {
   type DeliveryWorkbenchPageState
 } from './pageState'
 import { provisionConfiguredApi } from './provisioning'
+import {
+  buildNetworkPolicy,
+  buildRateLimitPolicy,
+  type NetworkPolicyDraft,
+  type RateLimitPolicyDraft
+} from './policies'
 import { selectDeliveryWorkbenchState } from './restore'
 import { validateApiVersionDraft } from './validation'
 import { buildApiVersionCreateRequest } from './versionDraft'
@@ -473,12 +479,6 @@ const stage = ref<'DELIVERY_PLAN' | 'API_CONFIG' | 'CREDENTIAL_CONFIG' | 'DOCUME
 )
 const taskDescription = ref('')
 const versionDocument = ref('{}')
-const rateLimitPolicyDocument = ref('{}')
-const networkPolicyDocument = ref('{}')
-const lineageSourceType = ref<'DATASET' | 'PROCESSING_ITEM'>('DATASET')
-const lineageSourceId = ref<number>()
-const lineageRole = ref<'PRIMARY' | 'INPUT' | 'LOOKUP' | 'DERIVED'>('PRIMARY')
-const lineages = ref<ApiVersionCreateReq['lineage']>([])
 const versionError = ref('')
 const secretForSubmission = ref('')
 
@@ -502,6 +502,16 @@ const binding = reactive({
   debugEnabled: false,
   status: 'ENABLED' as RuntimeBindingReq['status']
 })
+const rateLimitPolicy = reactive<RateLimitPolicyDraft>({ quota: 60, unit: 'MINUTE' })
+const networkPolicy = reactive<NetworkPolicyDraft>({ accessMode: 'ALL', allowedCidrs: [] })
+const rateLimitUnitLabel = computed(
+  () => ({ SECOND: '秒', MINUTE: '分钟', HOUR: '小时', DAY: '天' })[rateLimitPolicy.unit]
+)
+const networkPolicyLabel = computed(() =>
+  networkPolicy.accessMode === 'ALL'
+    ? '不限制来源'
+    : `允许 ${networkPolicy.allowedCidrs.length} 个网段`
+)
 const credential = reactive({
   name: '',
   authType: 'APP_KEY_SECRET' as CredentialCreateReq['authType'],
@@ -593,16 +603,6 @@ const createDeliveryPlan = async () => {
   }
 }
 
-const addLineage = () => {
-  if (!lineageSourceId.value) return message.warning('请填写血缘来源 ID')
-  lineages.value.push({
-    sourceType: lineageSourceType.value,
-    sourceId: lineageSourceId.value,
-    role: lineageRole.value
-  })
-  lineageSourceId.value = undefined
-}
-
 const parseObject = (content: string, label: string) => {
   try {
     const value = JSON.parse(content)
@@ -635,13 +635,12 @@ const validateStep = (step: number) => {
       }
     }
     if (step === 2) {
-      const rateLimitPolicy = parseObject(rateLimitPolicyDocument.value, '限流策略')
-      const networkPolicy = parseObject(networkPolicyDocument.value, '网络策略')
+      const rateLimitPolicyValue = buildRateLimitPolicy(rateLimitPolicy)
+      const networkPolicyValue = buildNetworkPolicy(networkPolicy)
       const errors = validateApiVersionDraft({
         ...versionForm,
-        rateLimitPolicy,
-        networkPolicy,
-        lineage: lineages.value
+        rateLimitPolicy: rateLimitPolicyValue,
+        networkPolicy: networkPolicyValue
       })
       if (Object.keys(errors).length) throw new Error(Object.values(errors)[0])
       if (!binding.upstreamTargetRef.trim()) throw new Error('请填写受保护上游引用')
@@ -672,17 +671,17 @@ const buildProvisioningDraft = () => {
   const id = requireId(deliveryId.value, '交付方案')
   if (!id) return
   const openapiDocument = parseObject(versionDocument.value, 'OpenAPI 文档')
-  const rateLimitPolicy = parseObject(rateLimitPolicyDocument.value, '限流策略')
-  const networkPolicy = parseObject(networkPolicyDocument.value, '网络策略')
+  const rateLimitPolicyValue = buildRateLimitPolicy(rateLimitPolicy)
+  const networkPolicyValue = buildNetworkPolicy(networkPolicy)
   return {
     deliveryId: id,
     api: { name: apiForm.name.trim(), description: apiForm.description.trim() },
     version: buildApiVersionCreateRequest({
       ...versionForm,
       openapiDocument,
-      rateLimitPolicy,
-      networkPolicy,
-      lineage: lineages.value
+      rateLimitPolicy: rateLimitPolicyValue,
+      networkPolicy: networkPolicyValue,
+      lineage: []
     }),
     environment: environment.value,
     binding: { ...binding },
@@ -745,9 +744,8 @@ const resetWizard = () => {
   })
   Object.assign(credential, { name: '', authType: 'APP_KEY_SECRET', appKey: '' })
   versionDocument.value = '{}'
-  rateLimitPolicyDocument.value = '{}'
-  networkPolicyDocument.value = '{}'
-  lineages.value = []
+  Object.assign(rateLimitPolicy, { quota: 60, unit: 'MINUTE' })
+  Object.assign(networkPolicy, { accessMode: 'ALL', allowedCidrs: [] })
   environment.value = 'TEST'
   idempotencyKeys.value = createIdempotencyKeys()
   clearSecret()
@@ -783,9 +781,9 @@ onBeforeUnmount(clearSecret)
 .wizard-section {
   min-height: 430px;
   padding: 28px 36px 20px;
+  background: var(--el-bg-color);
   border: 1px solid var(--el-border-color-lighter);
   border-radius: 12px;
-  background: var(--el-bg-color);
 }
 
 .wizard-heading {
@@ -812,13 +810,13 @@ onBeforeUnmount(clearSecret)
   display: inline-flex;
   width: 30px;
   height: 30px;
+  font-weight: 700;
+  color: var(--el-color-primary);
+  background: var(--el-color-primary-light-9);
+  border-radius: 9px;
   flex: 0 0 30px;
   align-items: center;
   justify-content: center;
-  border-radius: 9px;
-  color: var(--el-color-primary);
-  font-weight: 700;
-  background: var(--el-color-primary-light-9);
 }
 
 .wizard-form {
@@ -839,15 +837,35 @@ onBeforeUnmount(clearSecret)
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.lineage-grid {
-  grid-template-columns: 1.2fr 1fr 1.2fr 120px;
+.runtime-policy-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
 }
 
-.lineage-editor {
+.policy-card {
   padding: 18px;
+  background: var(--el-fill-color-extra-light);
   border: 1px solid var(--el-border-color-lighter);
   border-radius: 10px;
-  background: var(--el-fill-color-extra-light);
+}
+
+.policy-card-title {
+  margin-bottom: 16px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+
+.policy-field-grid {
+  grid-template-columns: minmax(0, 1.2fr) minmax(140px, 0.8fr);
+}
+
+.form-help {
+  width: 100%;
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--el-text-color-secondary);
 }
 
 .json-input :deep(textarea) {
@@ -866,10 +884,11 @@ onBeforeUnmount(clearSecret)
   padding-top: 22px;
 }
 
-@media (max-width: 900px) {
+@media (width <= 900px) {
   .form-grid-2,
   .form-grid-3,
-  .lineage-grid {
+  .runtime-policy-grid,
+  .policy-field-grid {
     grid-template-columns: 1fr;
   }
 
