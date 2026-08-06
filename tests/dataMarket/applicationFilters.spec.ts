@@ -47,7 +47,7 @@ describe('application management filter helpers', () => {
   })
 
   it('uses the approved business label for configuring applications', () => {
-    expect(getApplicationStatusLabel('CONFIGURING')).toBe('Pending delivery（待交付）')
+    expect(getApplicationStatusLabel('CONFIGURING')).toBe('待交付')
     expect(getApplicationStatusLabel('UNKNOWN')).toBe('UNKNOWN')
   })
 

@@ -98,7 +98,7 @@
           <el-tag effect="plain">{{ getApplicationStatusLabel(row.status) }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="datasetCount" label="数据集" width="80" />
+      <el-table-column prop="datasetCount" label="申请数量" width="100" />
       <el-table-column label="更新时间" width="180">
         <template #default="{ row }">{{ formatDate(row.updateTime) }}</template>
       </el-table-column>

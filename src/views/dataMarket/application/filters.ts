@@ -34,7 +34,7 @@ export const APPLICATION_STATUS_OPTIONS: ReadonlyArray<{
   { value: 'RETURNED_SUPPLEMENT', label: '待补充' },
   { value: 'REJECTED', label: '已驳回' },
   { value: 'CANCELLED', label: '已撤销' },
-  { value: 'CONFIGURING', label: 'Pending delivery（待交付）' },
+  { value: 'CONFIGURING', label: '待交付' },
   { value: 'PENDING_ACCEPTANCE', label: '待验收' },
   { value: 'RECTIFYING', label: '整改中' },
   { value: 'DELIVERED', label: '已交付' },

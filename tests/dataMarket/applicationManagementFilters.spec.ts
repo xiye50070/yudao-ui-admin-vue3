@@ -40,14 +40,14 @@ const TableStub = defineComponent({
   }
 })
 const TableColumnStub = defineComponent({
-  props: ['prop'],
+  props: ['prop', 'label'],
   setup(props, { slots }) {
     const row = inject<any>(tableRowKey)
     return () =>
-      h(
-        'div',
+      h('div', [
+        h('span', { 'data-column-label': props.label }, props.label),
         slots.default ? slots.default({ row: row.value }) : String(row.value[props.prop] ?? '')
-      )
+      ])
   }
 })
 const ButtonStub = defineComponent({
@@ -150,7 +150,8 @@ describe('application management filters', () => {
 
     await waitFor(() => expect(view.getByText('DMA-42')).toBeInTheDocument())
     expect(view.getByText('王明（wangming）')).toBeInTheDocument()
-    expect(view.getByText('Pending delivery（待交付）')).toBeInTheDocument()
+    expect(view.getByText('待交付')).toBeInTheDocument()
+    expect(view.getAllByText('申请数量')).not.toHaveLength(0)
     expect(view.getByText('2026-08-06 10:20:30')).toBeInTheDocument()
 
     deliveryApi.getApplicationPage.mockClear()
