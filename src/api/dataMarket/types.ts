@@ -399,8 +399,7 @@ export interface DeliveredApiHistoryDetailVO {
 }
 export interface ApiCreateReq {
   name: string
-  ownerUserId: number
-  description?: string
+  description: string
   effectiveAt?: number
   expiresAt?: number
 }

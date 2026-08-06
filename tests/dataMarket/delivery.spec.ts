@@ -131,7 +131,7 @@ describe('data-market management delivery contracts', () => {
   it('serializes every delivery datetime input as epoch milliseconds on the wire', () => {
     DeliveryApi.createDeliveredApi(1, {
       name: 'orders',
-      ownerUserId: 2,
+      description: 'order api',
       effectiveAt: '2026-08-01T00:00:00+08:00',
       expiresAt: '2026-12-31T23:59:00+08:00'
     } as never)
@@ -215,7 +215,7 @@ describe('data-market management delivery contracts', () => {
   })
 
   it('uses an idempotency key for every OpenAPI-mandated delivery write', () => {
-    DeliveryApi.createDeliveredApi(1, { name: 'a', ownerUserId: 2 })
+    DeliveryApi.createDeliveredApi(1, { name: 'a', description: 'api a' })
     DeliveryApi.completeDeliveryTask(1, 'API_CONFIG', { description: 'ready' })
     DeliveryApi.createCredential({
       deliveryId: 1,

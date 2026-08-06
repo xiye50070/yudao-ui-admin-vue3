@@ -21,4 +21,17 @@ describe('route-driven delivery workbench', () => {
     expect(source).toContain('resolveRouteApplicationId')
     expect(source).toContain('isDeliveryNotFoundError')
   })
+
+  it('collects the complete API configuration in steps before the final create action', () => {
+    expect(source).toContain('<el-steps')
+    expect(source).toContain('API 基本信息')
+    expect(source).toContain('版本与接口契约')
+    expect(source).toContain('运行绑定与血缘')
+    expect(source).toContain('凭证与授权')
+    expect(source).toContain('确认创建')
+    expect(source).not.toContain('label="交付 ID"')
+    expect(source).not.toContain('label="负责人 ID"')
+    expect(source).not.toContain('交付配置仅提交受保护引用与服务端凭证')
+    expect(source).not.toContain('已恢复交付')
+  })
 })
