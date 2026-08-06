@@ -1,5 +1,6 @@
 <template>
   <ContentWrap
+    v-if="!approvalContext"
     ><el-form :inline="true"
       ><el-form-item
         ><el-input
@@ -21,7 +22,18 @@
   >
   <ContentWrap
     ><el-table v-loading="loading" :data="list" empty-text="暂无申请"
-      ><el-table-column prop="applicationNo" label="申请单号" /><el-table-column
+      ><el-table-column label="申请单号"
+        ><template #default="{ row }"
+          ><el-button
+            v-hasPermi="['data-market:application:management-query']"
+            :data-testid="`application-no-${row.id}`"
+            link
+            type="primary"
+            @click="openDetail(row.id)"
+            >{{ row.applicationNo }}</el-button
+          ></template
+        ></el-table-column
+      ><el-table-column
         prop="name"
         label="申请名称"
       /><el-table-column prop="applicationType" label="类型" width="100" /><el-table-column
@@ -44,6 +56,7 @@
         ></el-table-column
       ></el-table
     ><Pagination
+      v-if="!approvalContext"
       v-model:limit="query.pageSize"
       v-model:page="query.pageNo"
       :total="total"
@@ -90,13 +103,15 @@
             ></el-table
           ></el-collapse-item
         ></el-collapse
-      ><el-divider content-position="left">清洗规则</el-divider
-      ><el-table :data="detail.cleaningRules" size="small"
-        ><el-table-column prop="datasetId" label="数据集" /><el-table-column
-          prop="fieldId"
-          label="字段" /><el-table-column prop="ruleTemplateId" label="规则模板" /><el-table-column
-          prop="customDescription"
-          label="说明" /></el-table
+      ><template v-if="detail.cleaningRules?.length"
+        ><el-divider content-position="left">历史清洗规则（只读）</el-divider
+        ><el-table :data="detail.cleaningRules" size="small"
+          ><el-table-column prop="datasetId" label="数据集" /><el-table-column
+            prop="fieldId"
+            label="字段" /><el-table-column
+            prop="ruleTemplateId"
+            label="规则模板" /><el-table-column prop="customDescription" label="说明" /></el-table
+      ></template>
       ><el-divider content-position="left">加工需求</el-divider
       ><el-table :data="detail.processingItems" size="small"
         ><el-table-column prop="itemNo" label="序号" width="80" /><el-table-column
@@ -130,42 +145,31 @@
           ><div>{{ item.description }}</div></el-timeline-item
         ></el-timeline
       ><el-empty v-if="!timeline.length" description="暂无时间线记录" /><el-divider /><el-button
+        v-if="detail.status === 'CONFIGURING'"
         v-hasPermi="['data-market:delivery:create']"
+        :data-testid="`create-delivery-${detail.id}`"
         type="primary"
-        @click="deliveryVisible = true"
+        @click="goToDeliveryConfiguration"
         >创建交付方案</el-button
       ></template
     ></el-drawer
   >
-  <Dialog v-model="deliveryVisible" title="创建交付方案"
-    ><el-form ref="deliveryFormRef" :model="deliveryForm" :rules="deliveryRules" label-width="100px"
-      ><el-form-item label="方案说明" prop="planDescription"
-        ><el-input v-model="deliveryForm.planDescription" type="textarea" /></el-form-item
-      ><el-form-item label="负责人 ID" prop="ownerUserId"
-        ><el-input-number v-model="deliveryForm.ownerUserId" :min="1" /></el-form-item></el-form
-    ><template #footer
-      ><el-button
-        v-hasPermi="['data-market:delivery:create']"
-        type="primary"
-        :loading="submitting"
-        @click="createDelivery"
-        >创建</el-button
-      ></template
-    ></Dialog
-  >
 </template>
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import * as DeliveryApi from '@/api/dataMarket/delivery'
 import type {
   ApplicationDetailVO,
   ApplicationSummaryVO,
   TimelineItem
 } from '@/api/dataMarket/types'
-import { useMessage } from '@/hooks/web/useMessage'
 import { describeApplicationBaseInfo, describeProcessingAdvancedSettings } from './presentation'
 defineOptions({ name: 'DataMarketApplication' })
-const message = useMessage()
+const props = defineProps<{
+  id?: string | number
+}>()
+const router = useRouter()
 const loading = ref(false)
 const list = ref<ApplicationSummaryVO[]>([])
 const total = ref(0)
@@ -182,18 +186,28 @@ const detailBaseInfo = computed(() =>
   detail.value ? describeApplicationBaseInfo(detail.value.baseInfo) : []
 )
 const timeline = ref<TimelineItem[]>([])
-const selectedId = ref<number>()
-const deliveryVisible = ref(false)
-const submitting = ref(false)
-const deliveryFormRef = ref<any>()
-const deliveryForm = reactive({ planDescription: '', ownerUserId: undefined as number | undefined })
-const deliveryRules = {
-  planDescription: [{ required: true, message: '请输入交付方案说明', trigger: 'blur' }],
-  ownerUserId: [{ required: true, message: '请输入负责人 ID', trigger: 'change' }]
-}
+const approvalContext = computed(() => props.id !== undefined && props.id !== null)
+const approvalApplicationId = computed(() => {
+  if (!approvalContext.value) return undefined
+  const match = String(props.id).match(/^(?:DATA_MARKET:)?(\d+)$/)
+  if (!match) return undefined
+  const id = Number(match[1])
+  return Number.isSafeInteger(id) && id > 0 ? id : undefined
+})
 const getList = async () => {
   loading.value = true
   try {
+    if (approvalContext.value) {
+      if (!approvalApplicationId.value) {
+        list.value = []
+        total.value = 0
+        return
+      }
+      const application = await DeliveryApi.getApplication(approvalApplicationId.value)
+      list.value = [application]
+      total.value = 1
+      return
+    }
     const data = await DeliveryApi.getApplicationPage(query)
     list.value = data.list
     total.value = data.total
@@ -205,7 +219,6 @@ const getList = async () => {
   }
 }
 const openDetail = async (id: number) => {
-  selectedId.value = id
   detailVisible.value = true
   detailLoading.value = true
   try {
@@ -222,19 +235,13 @@ const openDetail = async (id: number) => {
     detailLoading.value = false
   }
 }
-const createDelivery = async () => {
-  if (!(await deliveryFormRef.value.validate()) || !selectedId.value) return
-  submitting.value = true
-  try {
-    await DeliveryApi.createDelivery(
-      selectedId.value,
-      deliveryForm as { planDescription: string; ownerUserId: number }
-    )
-    deliveryVisible.value = false
-    message.success('交付方案已创建')
-  } finally {
-    submitting.value = false
-  }
+const goToDeliveryConfiguration = () => {
+  if (!detail.value) return
+  detailVisible.value = false
+  void router.push({
+    name: 'DataMarketDeliveryWorkbench',
+    query: { applicationId: String(detail.value.id) }
+  })
 }
 onMounted(getList)
 </script>

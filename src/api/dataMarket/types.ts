@@ -187,6 +187,7 @@ export interface ApplicationBaseInfo {
   name: string
   reason: string
   businessScenario: string
+  callerSystemId: number | null
   callerSystem: string
   callerOwner?: string
   environment: 'DEVELOPMENT' | 'TEST' | 'PRODUCTION' | 'MULTIPLE'
@@ -347,6 +348,42 @@ export interface DeliveryWorkbenchVO {
   lockVersion: number
   tasks: DeliveryTaskVO[]
   apis: DeliveredApiVO[]
+}
+export type DeliveredApiAcceptanceStatus =
+  | 'NOT_SUBMITTED'
+  | 'PENDING_ACCEPTANCE'
+  | 'RECTIFYING'
+  | 'ACCEPTED'
+
+export interface DeliveredApiHistoryPageReq extends PageParam {
+  keyword?: string
+  deliveryStatus?: string
+  acceptanceStatus?: DeliveredApiAcceptanceStatus
+  completedAt?: [string, string]
+}
+
+export interface DeliveredApiHistorySummaryVO {
+  apiId: number
+  apiNo: string
+  apiName: string
+  apiStatus: string
+  applicationId: number
+  applicationNo: string
+  applicationName: string
+  deliveryId: number
+  deliveryNo: string
+  deliveryStatus: string
+  deliveryVersionId: number | null
+  versionNo: string | null
+  method: string | null
+  requestPath: string | null
+  acceptanceStatus: DeliveredApiAcceptanceStatus
+  apiConfigCompletedAt: string
+}
+
+export interface DeliveredApiHistoryDetailVO {
+  summary: DeliveredApiHistorySummaryVO
+  api: DeliveredApiVO
 }
 export interface ApiCreateReq {
   name: string

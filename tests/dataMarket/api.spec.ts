@@ -15,6 +15,7 @@ import * as CatalogApi from '@/api/dataMarket/catalog'
 import * as SecurityApi from '@/api/dataMarket/security'
 import * as MetadataApi from '@/api/dataMarket/metadata'
 import * as WorkflowApi from '@/api/dataMarket/workflow'
+import * as DeliveryApi from '@/api/dataMarket/delivery'
 
 describe('data market API contracts', () => {
   beforeEach(() => vi.clearAllMocks())
@@ -100,6 +101,38 @@ describe('data market API contracts', () => {
         processDefinitionName: '数据市场续期',
         status: 0
       }
+    })
+  })
+
+  it('loads delivered API history through read-only management endpoints', () => {
+    DeliveryApi.getDeliveredApiHistoryPage({
+      pageNo: 2,
+      pageSize: 20,
+      keyword: 'DMA2026',
+      acceptanceStatus: 'ACCEPTED'
+    })
+    DeliveryApi.getDeliveredApiHistoryDetail(42)
+
+    expect(request.get).toHaveBeenNthCalledWith(1, {
+      url: '/data-market/management/delivered-apis',
+      params: {
+        pageNo: 2,
+        pageSize: 20,
+        keyword: 'DMA2026',
+        acceptanceStatus: 'ACCEPTED'
+      }
+    })
+    expect(request.get).toHaveBeenNthCalledWith(2, {
+      url: '/data-market/management/delivered-apis/42'
+    })
+  })
+
+  it('preserves the business error code when probing an application delivery', () => {
+    DeliveryApi.getApplicationDelivery(17)
+
+    expect(request.get).toHaveBeenCalledWith({
+      url: '/data-market/management/applications/17/delivery',
+      returnBusinessError: true
     })
   })
 })

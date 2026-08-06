@@ -14,7 +14,8 @@ describe('data-market management delivery contracts', () => {
     DeliveryApi.getApplicationDelivery(11)
 
     expect(request.get).toHaveBeenCalledWith({
-      url: '/data-market/management/applications/11/delivery'
+      url: '/data-market/management/applications/11/delivery',
+      returnBusinessError: true
     })
   })
 

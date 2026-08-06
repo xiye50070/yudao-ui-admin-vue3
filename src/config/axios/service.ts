@@ -109,7 +109,9 @@ service.interceptors.request.use(
 service.interceptors.response.use(
   async (response: AxiosResponse<any>) => {
     let { data } = response
-    const config = response.config
+    const config = response.config as InternalAxiosRequestConfig & {
+      returnBusinessError?: boolean
+    }
     if (!data) {
       // 返回“[HTTP]请求没有返回值”;
       throw new Error()
@@ -210,6 +212,11 @@ service.interceptors.response.use(
       })
       return Promise.reject(new Error(msg))
     } else if (code !== 0 && code !== 200) {
+      // 某些页面需要根据明确的业务错误码切换状态，例如“交付批次不存在”进入创建方案页。
+      // 仅由调用方显式开启；其他请求仍保持原有统一提示行为。
+      if (config.returnBusinessError) {
+        return Promise.reject({ code, msg })
+      }
       if (msg === '无效的刷新令牌') {
         // hard coding：忽略这个提示，直接登出
         console.log(msg)

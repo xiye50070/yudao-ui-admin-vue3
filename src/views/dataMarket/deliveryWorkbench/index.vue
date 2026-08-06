@@ -5,19 +5,68 @@
       type="warning"
       :closable="false"
   /></ContentWrap>
-  <ContentWrap
-    ><el-form :inline="true"
-      ><el-form-item label="申请 ID"
-        ><el-input-number v-model="applicationId" :min="1" /></el-form-item
-      ><el-form-item
+  <ContentWrap v-if="pageState === 'LOADING'" v-loading="true" class="min-h-180px" />
+  <ContentWrap v-else-if="pageState === 'ERROR'"
+    ><el-result icon="error" title="交付配置无法加载" :sub-title="pageError"
+      ><template #extra
+        ><el-button type="primary" @click="loadWorkbench">重试</el-button></template
+      ></el-result
+    ></ContentWrap
+  >
+  <ContentWrap v-else-if="pageState === 'WAIT_APPROVAL'"
+    ><el-result
+      icon="info"
+      title="审批流程尚未完成"
+      sub-title="只有整条审批流程完全通过后，具备交付创建权限的用户才能创建交付方案。"
+      ><template #extra><el-tag>{{ application?.status }}</el-tag></template></el-result
+  ></ContentWrap>
+  <ContentWrap v-else-if="pageState === 'CREATE_PLAN'" v-loading="referenceLoading"
+    ><el-alert
+      title="当前申请尚未创建交付方案。请确认负责人和方案说明后进入 API 配置。"
+      type="info"
+      :closable="false"
+      class="mb-16px"
+    />
+    <el-descriptions v-if="application" title="申请信息" :column="3" border class="mb-16px"
+      ><el-descriptions-item label="申请单号">{{ application.applicationNo }}</el-descriptions-item
+      ><el-descriptions-item label="申请名称">{{ application.name }}</el-descriptions-item
+      ><el-descriptions-item label="申请状态">{{ application.status }}</el-descriptions-item
+      ></el-descriptions
+    >
+    <el-form
+      ref="deliveryPlanFormRef"
+      data-testid="delivery-plan-form"
+      :model="deliveryPlanForm"
+      :rules="deliveryPlanRules"
+      label-width="110px"
+      class="max-w-760px"
+    >
+      <el-form-item label="方案说明" prop="planDescription"
+        ><el-input
+          v-model="deliveryPlanForm.planDescription"
+          type="textarea"
+          :rows="4"
+          placeholder="说明 API 拆分、加工结果与交付安排"
+      /></el-form-item>
+      <el-form-item label="交付负责人" prop="ownerUserId"
+        ><UserDepartmentSelect
+          v-model="deliveryPlanForm.ownerUserId"
+          :departments="departments"
+          :users="users"
+          :disabled="!referencesReady"
+      /></el-form-item>
+      <el-form-item
         ><el-button
-          v-hasPermi="['data-market:application:management-query']"
+          v-hasPermi="['data-market:delivery:create']"
           type="primary"
-          :loading="restoreLoading"
-          @click="loadDeliveryWorkbench"
-          >加载交付工作台</el-button
+          :loading="createPlanLoading"
+          @click="createDeliveryPlan"
+          >创建交付方案并进入配置</el-button
         ></el-form-item
-      ></el-form
+      >
+    </el-form></ContentWrap
+  >
+  <ContentWrap v-else-if="pageState === 'CONFIGURE'"
     ><el-alert
       v-if="workbench"
       :title="`已恢复交付 ${workbench.deliveryNo}（${workbench.status}），${workbench.apis.length} 个 API`"
@@ -36,7 +85,7 @@
       ></el-table
     ></ContentWrap
   >
-  <ContentWrap
+  <ContentWrap v-if="pageState === 'CONFIGURE'"
     ><el-tabs v-model="tab"
       ><el-tab-pane label="创建 API" name="api"
         ><el-form :model="apiForm" label-width="100px" class="max-w-600px"
@@ -221,16 +270,26 @@
   >
 </template>
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import * as DeliveryApi from '@/api/dataMarket/delivery'
+import * as DeptApi from '@/api/system/dept'
+import * as UserApi from '@/api/system/user'
 import type {
   ApiVersionCreateReq,
+  ApplicationDetailVO,
   CredentialCreateReq,
   DeliveryWorkbenchVO,
   RuntimeBindingReq
 } from '@/api/dataMarket/types'
 import { useMessage } from '@/hooks/web/useMessage'
+import UserDepartmentSelect from '@/views/dataMarket/components/UserDepartmentSelect.vue'
+import {
+  getBusinessErrorMessage,
+  isDeliveryNotFoundError,
+  resolveRouteApplicationId,
+  type DeliveryWorkbenchPageState
+} from './pageState'
 import { selectDeliveryWorkbenchState } from './restore'
 import { validateApiVersionDraft } from './validation'
 import { buildApiVersionCreateRequest } from './versionDraft'
@@ -238,9 +297,27 @@ defineOptions({ name: 'DataMarketDeliveryWorkbench' })
 const message = useMessage()
 const route = useRoute()
 const tab = ref('api')
-const applicationId = ref<number>()
+const applicationId = computed(() =>
+  resolveRouteApplicationId(route.query.applicationId ?? route.params.applicationId)
+)
+const pageState = ref<DeliveryWorkbenchPageState>('LOADING')
+const pageError = ref('')
+const application = ref<ApplicationDetailVO>()
 const workbench = ref<DeliveryWorkbenchVO>()
-const restoreLoading = ref(false)
+const referenceLoading = ref(false)
+const referencesReady = ref(false)
+const createPlanLoading = ref(false)
+const departments = ref<DeptApi.DeptVO[]>([])
+const users = ref<UserApi.UserVO[]>([])
+const deliveryPlanFormRef = ref<any>()
+const deliveryPlanForm = reactive({
+  planDescription: '',
+  ownerUserId: undefined as number | undefined
+})
+const deliveryPlanRules = {
+  planDescription: [{ required: true, message: '请输入交付方案说明', trigger: 'blur' }],
+  ownerUserId: [{ required: true, message: '请选择交付负责人', trigger: 'change' }]
+}
 const deliveryId = ref<number>()
 const apiId = ref<number>()
 const apiVersionId = ref<number>()
@@ -295,32 +372,87 @@ const credential = reactive({
 })
 const requireId = (id: number | undefined, label: string) =>
   id || (message.warning(`请填写${label}`), undefined)
-const loadDeliveryWorkbench = async () => {
-  const id = requireId(applicationId.value, '申请 ID')
-  if (!id) return
-  restoreLoading.value = true
+const loadReferences = async () => {
+  if (referencesReady.value) return
+  referenceLoading.value = true
   try {
-    const aggregate = await DeliveryApi.getApplicationDelivery(id)
-    const state = selectDeliveryWorkbenchState(aggregate)
-    workbench.value = aggregate
-    applicationId.value = state.applicationId
-    deliveryId.value = state.deliveryId
-    apiId.value = state.apiId
-    apiVersionId.value = state.apiVersionId
-    authorizationVersionId.value = state.authorizationVersionId
-    environment.value = state.environment
-    stage.value = state.stage
-    taskDescription.value = state.taskDescription
-    Object.assign(versionForm, state.version)
-    versionDocument.value = JSON.stringify(state.versionDocument, null, 2)
-    rateLimitPolicyDocument.value = JSON.stringify(state.rateLimitPolicy, null, 2)
-    networkPolicyDocument.value = JSON.stringify(state.networkPolicy, null, 2)
-    lineages.value = state.lineage
-    Object.assign(binding, state.binding)
-    Object.assign(credential, state.credential)
-    clearSecret()
+    const [departmentList, userList] = await Promise.all([
+      DeptApi.getSimpleDeptList(),
+      UserApi.getSimpleUserList()
+    ])
+    departments.value = departmentList
+    users.value = userList
+    referencesReady.value = true
   } finally {
-    restoreLoading.value = false
+    referenceLoading.value = false
+  }
+}
+const restoreWorkbench = (aggregate: DeliveryWorkbenchVO) => {
+  const state = selectDeliveryWorkbenchState(aggregate)
+  workbench.value = aggregate
+  deliveryId.value = state.deliveryId
+  apiId.value = state.apiId
+  apiVersionId.value = state.apiVersionId
+  authorizationVersionId.value = state.authorizationVersionId
+  environment.value = state.environment
+  stage.value = state.stage
+  taskDescription.value = state.taskDescription
+  Object.assign(versionForm, state.version)
+  versionDocument.value = JSON.stringify(state.versionDocument, null, 2)
+  rateLimitPolicyDocument.value = JSON.stringify(state.rateLimitPolicy, null, 2)
+  networkPolicyDocument.value = JSON.stringify(state.networkPolicy, null, 2)
+  lineages.value = state.lineage
+  Object.assign(binding, state.binding)
+  Object.assign(credential, state.credential)
+  clearSecret()
+}
+const loadWorkbench = async () => {
+  const id = applicationId.value
+  if (!id) {
+    pageError.value = '缺少有效的申请单参数，请从申请管理进入交付配置。'
+    pageState.value = 'ERROR'
+    return
+  }
+  pageState.value = 'LOADING'
+  pageError.value = ''
+  try {
+    application.value = await DeliveryApi.getApplication(id)
+    const aggregate = await DeliveryApi.getApplicationDelivery(id)
+    restoreWorkbench(aggregate)
+    pageState.value = 'CONFIGURE'
+  } catch (error) {
+    if (isDeliveryNotFoundError(error) && application.value) {
+      workbench.value = undefined
+      if (application.value.status !== 'CONFIGURING') {
+        pageState.value = 'WAIT_APPROVAL'
+        return
+      }
+      try {
+        await loadReferences()
+        pageState.value = 'CREATE_PLAN'
+      } catch (referenceError) {
+        pageError.value = getBusinessErrorMessage(referenceError)
+        pageState.value = 'ERROR'
+      }
+      return
+    }
+    pageError.value = getBusinessErrorMessage(error)
+    pageState.value = 'ERROR'
+  }
+}
+const createDeliveryPlan = async () => {
+  const id = applicationId.value
+  if (!id || !(await deliveryPlanFormRef.value?.validate())) return
+  createPlanLoading.value = true
+  try {
+    await DeliveryApi.createDelivery(id, {
+      planDescription: deliveryPlanForm.planDescription,
+      ownerUserId: deliveryPlanForm.ownerUserId as number
+    })
+    message.success('交付方案已创建')
+    await loadWorkbench()
+  } finally {
+    createPlanLoading.value = false
   }
 }
 const addLineage = () => {
@@ -433,10 +565,5 @@ const submitAcceptance = async () => {
   await DeliveryApi.submitDeliveryAcceptance(id, taskDescription.value)
   message.success('已提交统一验收')
 }
-onMounted(() => {
-  const routeApplicationId = Number(route.query.applicationId ?? route.params.applicationId)
-  if (!Number.isInteger(routeApplicationId) || routeApplicationId <= 0) return
-  applicationId.value = routeApplicationId
-  void loadDeliveryWorkbench()
-})
+onMounted(loadWorkbench)
 </script>

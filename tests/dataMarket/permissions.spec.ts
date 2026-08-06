@@ -24,4 +24,13 @@ describe('data-market management permission contracts', () => {
     expect(delivery).not.toContain('data-market:delivery:api-create')
     expect(acceptance).not.toContain('data-market:acceptance-issue:resolve')
   })
+
+  it('keeps caller-system configuration permissions independent from source-system permissions', () => {
+    const callerSystem = source('callerSystem/index.vue')
+
+    expect(callerSystem).toContain('data-market:caller-system:create')
+    expect(callerSystem).toContain('data-market:caller-system:update')
+    expect(callerSystem).toContain('data-market:caller-system:delete')
+    expect(callerSystem).not.toContain('data-market:source-system:')
+  })
 })

@@ -9,6 +9,9 @@ import type {
   CredentialAuthorization,
   CredentialCreateReq,
   DeliveryCreateReq,
+  DeliveredApiHistoryDetailVO,
+  DeliveredApiHistoryPageReq,
+  DeliveredApiHistorySummaryVO,
   DeliveryWorkbenchVO,
   LifecycleExecuteReq,
   PageParam,
@@ -37,7 +40,17 @@ export const getApplicationTimeline = (applicationId: number) =>
   })
 export const getApplicationDelivery = (applicationId: number) =>
   request.get<DeliveryWorkbenchVO>({
-    url: `${management}/applications/${applicationId}/delivery`
+    url: `${management}/applications/${applicationId}/delivery`,
+    returnBusinessError: true
+  })
+export const getDeliveredApiHistoryPage = (params: DeliveredApiHistoryPageReq) =>
+  request.get<PageResult<DeliveredApiHistorySummaryVO>>({
+    url: `${management}/delivered-apis`,
+    params
+  })
+export const getDeliveredApiHistoryDetail = (apiId: number) =>
+  request.get<DeliveredApiHistoryDetailVO>({
+    url: `${management}/delivered-apis/${apiId}`
   })
 export const getDeliveryAcceptanceRounds = (deliveryId: number) =>
   request.get<AcceptanceRoundVO[]>({

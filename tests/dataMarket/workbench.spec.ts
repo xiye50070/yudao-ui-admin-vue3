@@ -6,6 +6,7 @@ import TagPage from '@/views/dataMarket/tag/index.vue'
 import SourceSystemPage from '@/views/dataMarket/sourceSystem/index.vue'
 import DatasetPage from '@/views/dataMarket/dataset/index.vue'
 import AccessPolicyPage from '@/views/dataMarket/accessPolicy/index.vue'
+import accessPolicyPageSource from '@/views/dataMarket/accessPolicy/index.vue?raw'
 import MetadataImportPage from '@/views/dataMarket/metadataImport/index.vue'
 import WorkflowConfigPage from '@/views/dataMarket/workflowConfig/index.vue'
 
@@ -46,5 +47,16 @@ describe('data market workbench behavior', () => {
       'DataMarketMetadataImport',
       'DataMarketWorkflowConfig'
     ])
+  })
+
+  it('selects access-policy principals by name and keeps raw IDs out of the table', () => {
+    expect(accessPolicyPageSource).toContain('<el-tree-select')
+    expect(accessPolicyPageSource).toContain('DeptApi.getSimpleDeptList()')
+    expect(accessPolicyPageSource).toContain('RoleApi.getSimpleRoleList()')
+    expect(accessPolicyPageSource).toContain('label="主体名称"')
+    expect(accessPolicyPageSource).toContain('resolvePrincipalName(row)')
+    expect(accessPolicyPageSource).toContain('v-model="row.maxSensitivityLevel"')
+    expect(accessPolicyPageSource).not.toContain('label="主体 ID"')
+    expect(accessPolicyPageSource).not.toContain('prop="principalId"')
   })
 })
