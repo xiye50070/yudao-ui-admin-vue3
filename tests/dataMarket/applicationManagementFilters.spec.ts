@@ -40,14 +40,29 @@ const TableStub = defineComponent({
   }
 })
 const TableColumnStub = defineComponent({
-  props: ['prop', 'label'],
+  props: {
+    prop: String,
+    label: String,
+    width: [String, Number],
+    minWidth: [String, Number],
+    showOverflowTooltip: Boolean
+  },
   setup(props, { slots }) {
     const row = inject<any>(tableRowKey)
     return () =>
-      h('div', [
-        h('span', { 'data-column-label': props.label }, props.label),
-        slots.default ? slots.default({ row: row.value }) : String(row.value[props.prop] ?? '')
-      ])
+      h(
+        'div',
+        {
+          'data-column-prop': props.prop,
+          'data-column-width': props.width,
+          'data-column-min-width': props.minWidth,
+          'data-show-overflow-tooltip': String(Boolean(props.showOverflowTooltip))
+        },
+        [
+          h('span', { 'data-column-label': props.label }, props.label),
+          slots.default ? slots.default({ row: row.value }) : String(row.value[props.prop] ?? '')
+        ]
+      )
   }
 })
 const ButtonStub = defineComponent({
@@ -181,5 +196,20 @@ describe('application management filters', () => {
     await waitFor(() => expect(view.getByText('DMA-42')).toBeInTheDocument())
     expect(view.getByText('申请人数据加载失败')).toBeInTheDocument()
     expect(view.getByTestId('application-applicant-filter')).toBeDisabled()
+  })
+
+  it('keeps application names on one line and uses a compact status column', async () => {
+    const view = render(ApplicationView, { global: globalOptions })
+
+    await waitFor(() => expect(view.getByText('DMA-42')).toBeInTheDocument())
+
+    const nameColumn = view.container.querySelector<HTMLElement>('[data-column-prop="name"]')
+    const statusColumn = view.container.querySelector<HTMLElement>(
+      '[data-column-label="状态"]'
+    )?.parentElement
+
+    expect(Number(nameColumn?.dataset.columnMinWidth)).toBeGreaterThanOrEqual(240)
+    expect(nameColumn).toHaveAttribute('data-show-overflow-tooltip', 'true')
+    expect(Number(statusColumn?.dataset.columnWidth)).toBeLessThanOrEqual(120)
   })
 })

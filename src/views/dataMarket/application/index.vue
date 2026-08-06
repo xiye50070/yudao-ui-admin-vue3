@@ -89,11 +89,11 @@
             >{{ row.applicationNo }}</el-button
           ></template
         ></el-table-column
-      ><el-table-column prop="name" label="申请名称" />
+      ><el-table-column prop="name" label="申请名称" min-width="240" show-overflow-tooltip />
       <el-table-column label="申请人" min-width="150">
         <template #default="{ row }">{{ getApplicantName(row) }}</template>
       </el-table-column>
-      <el-table-column label="状态" min-width="180">
+      <el-table-column label="状态" width="110">
         <template #default="{ row }">
           <el-tag effect="plain">{{ getApplicationStatusLabel(row.status) }}</el-tag>
         </template>
