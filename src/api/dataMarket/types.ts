@@ -144,7 +144,19 @@ export interface ApplicationSummaryVO {
   currentVersionNo: number
   datasetCount?: number
   deliveredApiCount?: number
+  applicantUserId?: number
+  applicantDeptId?: number
   updateTime: string
+}
+
+export interface ApplicationManagementPageReq extends PageParam {
+  status?: ApplicationStatus
+  statuses?: ApplicationStatus[]
+  applicationType?: ApplicationType
+  applicantUserId?: number
+  name?: string
+  updateTime?: [string, string]
+  updateTimeSort?: 'ASC' | 'DESC'
 }
 
 export interface ApplicationDetailVO extends ApplicationSummaryVO {

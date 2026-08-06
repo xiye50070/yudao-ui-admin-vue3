@@ -5,6 +5,7 @@ import type {
   ApiVersionCreateReq,
   AcceptanceRoundVO,
   ApplicationDetailVO,
+  ApplicationManagementPageReq,
   ApplicationSummaryVO,
   CredentialAuthorization,
   CredentialCreateReq,
@@ -14,7 +15,6 @@ import type {
   DeliveredApiHistorySummaryVO,
   DeliveryWorkbenchVO,
   LifecycleExecuteReq,
-  PageParam,
   PageResult,
   RuntimeBindingReq,
   TimelineItem
@@ -24,14 +24,8 @@ const management = '/data-market/management'
 const commandHeaders = (idempotencyKey?: string): { 'Idempotency-Key': string } => ({
   'Idempotency-Key': idempotencyKey ?? crypto.randomUUID()
 })
-export const getApplicationPage = (
-  params: PageParam & {
-    status?: string
-    applicationType?: string
-    applicantUserId?: number
-    name?: string
-  }
-) => request.get<PageResult<ApplicationSummaryVO>>({ url: `${management}/applications`, params })
+export const getApplicationPage = (params: ApplicationManagementPageReq) =>
+  request.get<PageResult<ApplicationSummaryVO>>({ url: `${management}/applications`, params })
 export const getApplication = (applicationId: number) =>
   request.get<ApplicationDetailVO>({ url: `${management}/applications/${applicationId}` })
 export const getApplicationTimeline = (applicationId: number) =>

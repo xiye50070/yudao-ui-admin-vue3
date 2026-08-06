@@ -1,25 +1,81 @@
 <template>
-  <ContentWrap
-    v-if="!approvalContext"
-    ><el-form :inline="true"
-      ><el-form-item
-        ><el-input
-          v-model="query.status"
-          placeholder="申请状态"
+  <ContentWrap v-if="!approvalContext">
+    <el-form :inline="true" :model="query" class="application-filter-form">
+      <el-form-item label="申请状态">
+        <el-select
+          v-model="query.statuses"
+          data-testid="application-status-filter"
+          multiple
           clearable
-          @keyup.enter="getList" /></el-form-item
-      ><el-form-item
-        ><el-input-number
-          v-model="query.applicantUserId"
-          :min="1"
-          placeholder="申请人 ID" /></el-form-item
-      ><el-form-item
-        ><el-button v-hasPermi="['data-market:application:management-query']" @click="getList"
-          >查询</el-button
-        ></el-form-item
-      ></el-form
-    ></ContentWrap
-  >
+          filterable
+          collapse-tags
+          collapse-tags-tooltip
+          placeholder="全部状态"
+          class="!w-260px"
+        >
+          <el-option
+            v-for="option in APPLICATION_STATUS_OPTIONS"
+            :key="option.value"
+            :label="option.label"
+            :value="option.value"
+          />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="申请人">
+        <el-cascader
+          v-model="applicantNodeValue"
+          data-testid="application-applicant-filter"
+          :options="applicantOptions"
+          :props="applicantCascaderProps"
+          :disabled="referenceLoading || Boolean(referenceError)"
+          clearable
+          filterable
+          placeholder="部门 / 申请人"
+          class="!w-260px"
+        />
+      </el-form-item>
+      <el-form-item label="更新时间">
+        <el-date-picker
+          v-model="query.updateTime"
+          data-testid="application-update-time-filter"
+          type="datetimerange"
+          value-format="YYYY-MM-DD HH:mm:ss"
+          start-placeholder="开始时间"
+          end-placeholder="结束时间"
+          class="!w-380px"
+        />
+      </el-form-item>
+      <el-form-item label="日期排序">
+        <el-select
+          v-model="query.updateTimeSort"
+          data-testid="application-update-time-sort"
+          class="!w-150px"
+        >
+          <el-option label="最新优先" value="DESC" />
+          <el-option label="最早优先" value="ASC" />
+        </el-select>
+      </el-form-item>
+      <el-form-item>
+        <el-button
+          v-hasPermi="['data-market:application:management-query']"
+          data-testid="application-filter-submit"
+          type="primary"
+          @click="submitFilters"
+        >
+          查询
+        </el-button>
+        <el-button @click="resetFilters">重置</el-button>
+      </el-form-item>
+    </el-form>
+    <el-alert
+      v-if="referenceError"
+      title="申请人数据加载失败"
+      :description="referenceError"
+      type="warning"
+      :closable="false"
+      show-icon
+    />
+  </ContentWrap>
   <ContentWrap
     ><el-table v-loading="loading" :data="list" empty-text="暂无申请"
       ><el-table-column label="申请单号"
@@ -33,18 +89,20 @@
             >{{ row.applicationNo }}</el-button
           ></template
         ></el-table-column
-      ><el-table-column
-        prop="name"
-        label="申请名称"
-      /><el-table-column prop="applicationType" label="类型" width="100" /><el-table-column
-        prop="status"
-        label="状态"
-        width="130"
-      /><el-table-column prop="datasetCount" label="数据集" width="80" /><el-table-column
-        prop="updateTime"
-        label="更新时间"
-        width="180"
-      /><el-table-column label="操作" width="120"
+      ><el-table-column prop="name" label="申请名称" />
+      <el-table-column label="申请人" min-width="150">
+        <template #default="{ row }">{{ getApplicantName(row) }}</template>
+      </el-table-column>
+      <el-table-column label="状态" min-width="180">
+        <template #default="{ row }">
+          <el-tag effect="plain">{{ getApplicationStatusLabel(row.status) }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="datasetCount" label="数据集" width="80" />
+      <el-table-column label="更新时间" width="180">
+        <template #default="{ row }">{{ formatDate(row.updateTime) }}</template>
+      </el-table-column>
+      <el-table-column label="操作" width="120"
         ><template #default="{ row }"
           ><el-button
             v-hasPermi="['data-market:application:management-query']"
@@ -158,13 +216,26 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import * as DeptApi from '@/api/system/dept'
+import * as UserApi from '@/api/system/user'
 import * as DeliveryApi from '@/api/dataMarket/delivery'
 import type {
   ApplicationDetailVO,
+  ApplicationManagementPageReq,
   ApplicationSummaryVO,
   TimelineItem
 } from '@/api/dataMarket/types'
+import { formatDate } from '@/utils/formatTime'
 import { describeApplicationBaseInfo, describeProcessingAdvancedSettings } from './presentation'
+import {
+  APPLICATION_STATUS_OPTIONS,
+  buildApplicantCascadeOptions,
+  formatApplicantName,
+  getApplicationStatusLabel,
+  parseApplicantNodeValue,
+  type ApplicantDepartmentReference,
+  type ApplicantUserReference
+} from './filters'
 defineOptions({ name: 'DataMarketApplication' })
 const props = defineProps<{
   id?: string | number
@@ -173,11 +244,49 @@ const router = useRouter()
 const loading = ref(false)
 const list = ref<ApplicationSummaryVO[]>([])
 const total = ref(0)
-const query = reactive({
+const query = reactive<ApplicationManagementPageReq>({
   pageNo: 1,
   pageSize: 10,
-  status: '',
-  applicantUserId: undefined as number | undefined
+  statuses: [],
+  applicantUserId: undefined,
+  updateTime: undefined,
+  updateTimeSort: 'DESC'
+})
+const departments = ref<ApplicantDepartmentReference[]>([])
+const users = ref<ApplicantUserReference[]>([])
+const referenceLoading = ref(false)
+const referenceError = ref('')
+const applicantCascaderProps = {
+  value: 'value',
+  label: 'label',
+  children: 'children',
+  disabled: 'disabled',
+  emitPath: false,
+  checkStrictly: false
+}
+const applicantNodeValue = computed<string | undefined>({
+  get: () => (query.applicantUserId === undefined ? undefined : `user:${query.applicantUserId}`),
+  set: (value) => {
+    query.applicantUserId = parseApplicantNodeValue(value)
+  }
+})
+const applicantOptions = computed(() =>
+  buildApplicantCascadeOptions(departments.value, users.value, query.applicantUserId)
+)
+const applicantUserMap = computed(
+  () => new Map(users.value.map((user) => [user.id, user] as const))
+)
+const getApplicantName = (row: ApplicationSummaryVO) => {
+  if (row.applicantUserId === undefined) return formatApplicantName()
+  return formatApplicantName(applicantUserMap.value.get(row.applicantUserId), row.applicantUserId)
+}
+const buildPageRequest = (): ApplicationManagementPageReq => ({
+  pageNo: query.pageNo,
+  pageSize: query.pageSize,
+  ...(query.statuses?.length ? { statuses: query.statuses } : {}),
+  ...(query.applicantUserId !== undefined ? { applicantUserId: query.applicantUserId } : {}),
+  ...(query.updateTime?.length === 2 ? { updateTime: query.updateTime } : {}),
+  updateTimeSort: query.updateTimeSort || 'DESC'
 })
 const detailVisible = ref(false)
 const detailLoading = ref(false)
@@ -208,7 +317,7 @@ const getList = async () => {
       total.value = 1
       return
     }
-    const data = await DeliveryApi.getApplicationPage(query)
+    const data = await DeliveryApi.getApplicationPage(buildPageRequest())
     list.value = data.list
     total.value = data.total
   } catch {
@@ -217,6 +326,36 @@ const getList = async () => {
   } finally {
     loading.value = false
   }
+}
+const loadApplicantReferences = async () => {
+  referenceLoading.value = true
+  referenceError.value = ''
+  try {
+    const [departmentItems, userItems] = await Promise.all([
+      DeptApi.getSimpleDeptList(),
+      UserApi.getSimpleUserList()
+    ])
+    departments.value = departmentItems
+    users.value = userItems
+  } catch {
+    departments.value = []
+    users.value = []
+    referenceError.value = '仍可查看申请列表，请稍后重试加载部门与用户数据。'
+  } finally {
+    referenceLoading.value = false
+  }
+}
+const submitFilters = () => {
+  query.pageNo = 1
+  void getList()
+}
+const resetFilters = () => {
+  query.pageNo = 1
+  query.statuses = []
+  query.applicantUserId = undefined
+  query.updateTime = undefined
+  query.updateTimeSort = 'DESC'
+  void getList()
 }
 const openDetail = async (id: number) => {
   detailVisible.value = true
@@ -243,5 +382,10 @@ const goToDeliveryConfiguration = () => {
     query: { applicationId: String(detail.value.id) }
   })
 }
-onMounted(getList)
+onMounted(() => {
+  void getList()
+  if (!approvalContext.value) {
+    void loadApplicantReferences()
+  }
+})
 </script>
