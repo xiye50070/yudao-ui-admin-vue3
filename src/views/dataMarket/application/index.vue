@@ -78,7 +78,7 @@
   </ContentWrap>
   <ContentWrap
     ><el-table v-loading="loading" :data="list" empty-text="暂无申请"
-      ><el-table-column label="申请单号"
+      ><el-table-column label="申请单号" width="220"
         ><template #default="{ row }"
           ><el-button
             v-hasPermi="['data-market:application:management-query']"

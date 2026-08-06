@@ -198,16 +198,20 @@ describe('application management filters', () => {
     expect(view.getByTestId('application-applicant-filter')).toBeDisabled()
   })
 
-  it('keeps application names on one line and uses a compact status column', async () => {
+  it('keeps application numbers visible, names on one line and status compact', async () => {
     const view = render(ApplicationView, { global: globalOptions })
 
     await waitFor(() => expect(view.getByText('DMA-42')).toBeInTheDocument())
 
+    const applicationNoColumn = view.container.querySelector<HTMLElement>(
+      '[data-column-label="申请单号"]'
+    )?.parentElement
     const nameColumn = view.container.querySelector<HTMLElement>('[data-column-prop="name"]')
     const statusColumn = view.container.querySelector<HTMLElement>(
       '[data-column-label="状态"]'
     )?.parentElement
 
+    expect(Number(applicationNoColumn?.dataset.columnWidth)).toBeGreaterThanOrEqual(220)
     expect(Number(nameColumn?.dataset.columnMinWidth)).toBeGreaterThanOrEqual(240)
     expect(nameColumn).toHaveAttribute('data-show-overflow-tooltip', 'true')
     expect(Number(statusColumn?.dataset.columnWidth)).toBeLessThanOrEqual(120)
