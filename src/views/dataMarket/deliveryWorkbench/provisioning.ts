@@ -5,6 +5,7 @@ import type {
   CredentialCreateReq,
   RuntimeBindingReq
 } from '@/api/dataMarket/types'
+import { DEFAULT_DELIVERY_ENVIRONMENT } from './restore'
 
 export interface DeliveryProvisioningClient {
   createDeliveredApi: typeof DeliveryApi.createDeliveredApi
@@ -26,6 +27,19 @@ export interface DeliveryProvisioningDraft {
     credential: string
   }
 }
+
+export const buildProvisioningRuntime = (
+  onlineDebugEnabled: boolean,
+  selectedEnvironment: DeliveryProvisioningDraft['environment'],
+  binding: RuntimeBindingReq
+) => ({
+  environment: onlineDebugEnabled ? selectedEnvironment : DEFAULT_DELIVERY_ENVIRONMENT,
+  binding: {
+    ...binding,
+    upstreamTargetRef: onlineDebugEnabled ? binding.upstreamTargetRef.trim() : '',
+    debugEnabled: onlineDebugEnabled && binding.debugEnabled
+  }
+})
 
 export const provisionConfiguredApi = async (
   draft: DeliveryProvisioningDraft,

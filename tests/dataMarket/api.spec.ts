@@ -75,6 +75,30 @@ describe('data market API contracts', () => {
     })
   })
 
+  it('uses backend CRUD endpoints for configurable filter dimensions', () => {
+    const dimension = { code: 'SOURCE_TYPE', name: '数据源类型', sort: 10, status: 0 }
+
+    CatalogApi.getFilterDimensions()
+    CatalogApi.createFilterDimension(dimension)
+    CatalogApi.updateFilterDimension(21, dimension)
+    CatalogApi.deleteFilterDimension(21)
+
+    expect(request.get).toHaveBeenCalledWith({
+      url: '/data-market/management/filter-dimensions'
+    })
+    expect(request.post).toHaveBeenCalledWith({
+      url: '/data-market/management/filter-dimensions',
+      data: dimension
+    })
+    expect(request.put).toHaveBeenCalledWith({
+      url: '/data-market/management/filter-dimensions/21',
+      data: dimension
+    })
+    expect(request.delete).toHaveBeenCalledWith({
+      url: '/data-market/management/filter-dimensions/21'
+    })
+  })
+
   it('uploads metadata imports with overwrite choice and an idempotency key', () => {
     const file = new File(['datasetCode'], 'datasets.xlsx')
     MetadataApi.importMetadata(file, true, 'metadata-import-20260731')

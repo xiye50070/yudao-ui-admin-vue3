@@ -138,6 +138,16 @@ export const submitDeliveryAcceptance = (
     data: { summary },
     headers: commandHeaders(idempotencyKey)
   })
+export const submitApplicationAcceptance = (
+  applicationId: number,
+  summary?: string,
+  idempotencyKey?: string
+) =>
+  request.post<number>({
+    url: `${management}/applications/${applicationId}/submit-acceptance`,
+    data: { summary },
+    headers: commandHeaders(idempotencyKey)
+  })
 export const resolveAcceptanceIssue = (
   issueId: number,
   resolution: string,

@@ -226,9 +226,19 @@ describe('data-market management delivery contracts', () => {
       appSecret: 'secret',
       authorizations: [{ apiVersionId: 3, status: 'ACTIVE' }]
     })
-    DeliveryApi.submitDeliveryAcceptance(1, 'all ready')
+    DeliveryApi.submitApplicationAcceptance(11, 'all ready')
 
     for (const call of request.post.mock.calls)
       expect(call[0].headers?.['Idempotency-Key']).toMatch(/^.{16,100}$/)
+  })
+
+  it('submits unified acceptance through the application endpoint', () => {
+    DeliveryApi.submitApplicationAcceptance(11, 'all ready', 'acceptance-key')
+
+    expect(request.post).toHaveBeenCalledWith({
+      url: '/data-market/management/applications/11/submit-acceptance',
+      data: { summary: 'all ready' },
+      headers: { 'Idempotency-Key': 'acceptance-key' }
+    })
   })
 })

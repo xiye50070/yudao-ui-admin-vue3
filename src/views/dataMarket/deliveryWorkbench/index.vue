@@ -89,7 +89,7 @@
       <el-steps :active="wizardStep" finish-status="success" align-center class="mb-28px">
         <el-step title="API 基本信息" />
         <el-step title="版本与接口契约" />
-        <el-step title="运行策略与绑定" />
+        <el-step :title="DATA_MARKET_ONLINE_DEBUG_ENABLED ? '运行策略与绑定' : '运行策略'" />
         <el-step title="凭证与授权" />
         <el-step title="确认创建" />
       </el-steps>
@@ -98,7 +98,11 @@
         v-if="provisionCompleted"
         icon="success"
         title="API 创建完成"
-        sub-title="API、不可变版本、运行绑定和凭证已全部创建。"
+        :sub-title="
+          DATA_MARKET_ONLINE_DEBUG_ENABLED
+            ? 'API、不可变版本、运行绑定和凭证已全部创建。'
+            : 'API、不可变版本和凭证已全部创建。'
+        "
       >
         <template #extra>
           <el-button type="primary" @click="resetWizard">继续创建 API</el-button>
@@ -198,8 +202,14 @@
           <div class="wizard-heading">
             <span class="wizard-index">3</span>
             <div>
-              <h3>运行策略与绑定</h3>
-              <p>通过结构化选项配置访问策略、运行环境和上游目标引用。</p>
+              <h3>{{ DATA_MARKET_ONLINE_DEBUG_ENABLED ? '运行策略与绑定' : '运行策略' }}</h3>
+              <p>
+                {{
+                  DATA_MARKET_ONLINE_DEBUG_ENABLED
+                    ? '通过结构化选项配置访问策略、运行环境和上游目标引用。'
+                    : '通过结构化选项配置限流和网络访问策略。'
+                }}
+              </p>
             </div>
           </div>
           <el-form label-position="top" class="wizard-form">
@@ -252,38 +262,41 @@
                 </el-form-item>
               </div>
             </div>
-            <el-divider content-position="left">运行绑定</el-divider>
-            <div class="form-grid form-grid-3">
-              <el-form-item label="环境" required>
-                <el-select v-model="environment" class="!w-100%">
-                  <el-option label="开发" value="DEVELOPMENT" />
-                  <el-option label="测试" value="TEST" />
-                  <el-option label="生产" value="PRODUCTION" />
-                </el-select>
-              </el-form-item>
-              <el-form-item label="超时（毫秒）" required>
-                <el-input-number
-                  v-model="binding.timeoutMs"
-                  :min="100"
-                  :max="30000"
-                  controls-position="right"
-                  class="!w-100%"
-                />
-              </el-form-item>
-              <el-form-item label="TLS 校验">
-                <el-switch v-model="binding.tlsVerify" />
-              </el-form-item>
-            </div>
-            <el-form-item label="受保护上游引用" required>
-              <el-input
-                v-model="binding.upstreamTargetRef"
-                placeholder="例如 orders-test（不要填写 URL）"
-              />
-              <div class="form-help">
-                填写服务端 yudao.data-market.debug.targets
-                下已经配置的引用键，实际地址只保存在服务端。
+            <!-- 在线调试能力暂时隐藏；保留完整表单，恢复开关后无需重写。 -->
+            <template v-if="DATA_MARKET_ONLINE_DEBUG_ENABLED">
+              <el-divider content-position="left">运行绑定</el-divider>
+              <div class="form-grid form-grid-3">
+                <el-form-item label="环境" required>
+                  <el-select v-model="environment" class="!w-100%">
+                    <el-option label="开发" value="DEVELOPMENT" />
+                    <el-option label="测试" value="TEST" />
+                    <el-option label="生产" value="PRODUCTION" />
+                  </el-select>
+                </el-form-item>
+                <el-form-item label="超时（毫秒）" required>
+                  <el-input-number
+                    v-model="binding.timeoutMs"
+                    :min="100"
+                    :max="30000"
+                    controls-position="right"
+                    class="!w-100%"
+                  />
+                </el-form-item>
+                <el-form-item label="TLS 校验">
+                  <el-switch v-model="binding.tlsVerify" />
+                </el-form-item>
               </div>
-            </el-form-item>
+              <el-form-item label="受保护上游引用" required>
+                <el-input
+                  v-model="binding.upstreamTargetRef"
+                  placeholder="例如 orders-test（不要填写 URL）"
+                />
+                <div class="form-help">
+                  填写服务端 yudao.data-market.debug.targets
+                  下已经配置的引用键，实际地址只保存在服务端。
+                </div>
+              </el-form-item>
+            </template>
           </el-form>
         </section>
 
@@ -336,10 +349,13 @@
             <el-descriptions-item label="接口"
               >{{ versionForm.method }} {{ versionForm.requestPath }}</el-descriptions-item
             >
-            <el-descriptions-item label="运行环境">{{ environment }}</el-descriptions-item>
-            <el-descriptions-item label="上游引用">{{
-              binding.upstreamTargetRef
-            }}</el-descriptions-item>
+            <!-- 在线调试恢复后重新展示运行环境和上游目标摘要。 -->
+            <template v-if="DATA_MARKET_ONLINE_DEBUG_ENABLED">
+              <el-descriptions-item label="运行环境">{{ environment }}</el-descriptions-item>
+              <el-descriptions-item label="上游引用">{{
+                binding.upstreamTargetRef
+              }}</el-descriptions-item>
+            </template>
             <el-descriptions-item label="限流策略"
               >{{ rateLimitPolicy.quota }} 次 / {{ rateLimitUnitLabel }}</el-descriptions-item
             >
@@ -382,26 +398,32 @@
       </div>
     </ContentWrap>
 
-    <ContentWrap v-if="workbench?.apis.length" title="交付流程操作">
+    <ContentWrap v-if="workbench?.apis.length" title="统一验收">
+      <el-alert
+        v-if="!acceptanceReady"
+        title="暂时不能提交统一验收"
+        type="warning"
+        :closable="false"
+        class="mb-16px"
+      >
+        <ul class="acceptance-blockers">
+          <li v-for="reason in acceptanceBlockers" :key="reason">{{ reason }}</li>
+        </ul>
+      </el-alert>
       <el-form label-width="100px" class="max-w-760px">
-        <el-form-item label="当前阶段">
-          <el-select v-model="stage" class="!w-260px">
-            <el-option label="交付方案" value="DELIVERY_PLAN" />
-            <el-option label="API 配置" value="API_CONFIG" />
-            <el-option label="凭证配置" value="CREDENTIAL_CONFIG" />
-            <el-option label="文档" value="DOCUMENTATION" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="完成说明">
-          <el-input v-model="taskDescription" type="textarea" :rows="3" />
+        <el-form-item label="验收说明（可选）">
+          <el-input
+            v-model="acceptanceSummary"
+            type="textarea"
+            :rows="3"
+            placeholder="补充本申请整单交付的验收说明"
+          />
         </el-form-item>
         <el-form-item>
-          <el-button v-hasPermi="['data-market:delivery:task:complete']" @click="completeTask"
-            >完成阶段</el-button
-          >
           <el-button
             v-hasPermi="['data-market:acceptance:submit']"
             type="success"
+            :disabled="!acceptanceReady"
             @click="submitAcceptance"
             >提交统一验收</el-button
           >
@@ -417,6 +439,7 @@ import { useRoute } from 'vue-router'
 import * as DeliveryApi from '@/api/dataMarket/delivery'
 import * as DeptApi from '@/api/system/dept'
 import * as UserApi from '@/api/system/user'
+import { DATA_MARKET_ONLINE_DEBUG_ENABLED } from '@/config/dataMarketFeatures'
 import type {
   ApiVersionCreateReq,
   ApplicationDetailVO,
@@ -426,20 +449,21 @@ import type {
 } from '@/api/dataMarket/types'
 import { useMessage } from '@/hooks/web/useMessage'
 import UserDepartmentSelect from '@/views/dataMarket/components/UserDepartmentSelect.vue'
+import { acceptanceBlockingMessages, isAcceptanceReady } from './acceptanceReadiness'
 import {
   getBusinessErrorMessage,
   isDeliveryNotFoundError,
   resolveRouteApplicationId,
   type DeliveryWorkbenchPageState
 } from './pageState'
-import { provisionConfiguredApi } from './provisioning'
+import { buildProvisioningRuntime, provisionConfiguredApi } from './provisioning'
 import {
   buildNetworkPolicy,
   buildRateLimitPolicy,
   type NetworkPolicyDraft,
   type RateLimitPolicyDraft
 } from './policies'
-import { selectDeliveryWorkbenchState } from './restore'
+import { DEFAULT_DELIVERY_ENVIRONMENT, selectDeliveryWorkbenchState } from './restore'
 import { validateApiVersionDraft } from './validation'
 import { buildApiVersionCreateRequest } from './versionDraft'
 
@@ -454,6 +478,10 @@ const pageState = ref<DeliveryWorkbenchPageState>('LOADING')
 const pageError = ref('')
 const application = ref<ApplicationDetailVO>()
 const workbench = ref<DeliveryWorkbenchVO>()
+const acceptanceBlockers = computed(() =>
+  acceptanceBlockingMessages(workbench.value?.acceptanceReadiness)
+)
+const acceptanceReady = computed(() => isAcceptanceReady(workbench.value?.acceptanceReadiness))
 const referenceLoading = ref(false)
 const referencesReady = ref(false)
 const createPlanLoading = ref(false)
@@ -473,11 +501,8 @@ const deliveryId = ref<number>()
 const wizardStep = ref(0)
 const provisionLoading = ref(false)
 const provisionCompleted = ref(false)
-const environment = ref<'DEVELOPMENT' | 'TEST' | 'PRODUCTION'>('TEST')
-const stage = ref<'DELIVERY_PLAN' | 'API_CONFIG' | 'CREDENTIAL_CONFIG' | 'DOCUMENTATION'>(
-  'DELIVERY_PLAN'
-)
-const taskDescription = ref('')
+const environment = ref<'DEVELOPMENT' | 'TEST' | 'PRODUCTION'>(DEFAULT_DELIVERY_ENVIRONMENT)
+const acceptanceSummary = ref('')
 const versionDocument = ref('{}')
 const versionError = ref('')
 const secretForSubmission = ref('')
@@ -548,8 +573,6 @@ const restoreWorkbench = (aggregate: DeliveryWorkbenchVO) => {
   const state = selectDeliveryWorkbenchState(aggregate)
   workbench.value = aggregate
   deliveryId.value = state.deliveryId
-  stage.value = state.stage
-  taskDescription.value = state.taskDescription
 }
 
 const loadWorkbench = async () => {
@@ -643,7 +666,9 @@ const validateStep = (step: number) => {
         networkPolicy: networkPolicyValue
       })
       if (Object.keys(errors).length) throw new Error(Object.values(errors)[0])
-      if (!binding.upstreamTargetRef.trim()) throw new Error('请填写受保护上游引用')
+      if (DATA_MARKET_ONLINE_DEBUG_ENABLED && !binding.upstreamTargetRef.trim()) {
+        throw new Error('请填写受保护上游引用')
+      }
     }
     if (
       step === 3 &&
@@ -673,6 +698,11 @@ const buildProvisioningDraft = () => {
   const openapiDocument = parseObject(versionDocument.value, 'OpenAPI 文档')
   const rateLimitPolicyValue = buildRateLimitPolicy(rateLimitPolicy)
   const networkPolicyValue = buildNetworkPolicy(networkPolicy)
+  const runtime = buildProvisioningRuntime(
+    DATA_MARKET_ONLINE_DEBUG_ENABLED,
+    environment.value,
+    binding
+  )
   return {
     deliveryId: id,
     api: { name: apiForm.name.trim(), description: apiForm.description.trim() },
@@ -683,8 +713,8 @@ const buildProvisioningDraft = () => {
       networkPolicy: networkPolicyValue,
       lineage: []
     }),
-    environment: environment.value,
-    binding: { ...binding },
+    // 发布动作仍需要运行绑定；隐藏期间固定生产环境、关闭调试并提交空目标。
+    ...runtime,
     credential: {
       ...credential,
       name: credential.name.trim(),
@@ -705,7 +735,9 @@ const submitProvisioning = async () => {
     clearSecret()
     provisionCompleted.value = true
     wizardStep.value = 5
-    message.success('API、版本、运行绑定和凭证已创建')
+    message.success(
+      DATA_MARKET_ONLINE_DEBUG_ENABLED ? 'API、版本、运行绑定和凭证已创建' : 'API、版本和凭证已创建'
+    )
     await loadWorkbench()
   } catch (error) {
     versionError.value = getBusinessErrorMessage(error)
@@ -746,24 +778,20 @@ const resetWizard = () => {
   versionDocument.value = '{}'
   Object.assign(rateLimitPolicy, { quota: 60, unit: 'MINUTE' })
   Object.assign(networkPolicy, { accessMode: 'ALL', allowedCidrs: [] })
-  environment.value = 'TEST'
+  environment.value = DEFAULT_DELIVERY_ENVIRONMENT
   idempotencyKeys.value = createIdempotencyKeys()
   clearSecret()
 }
 
-const completeTask = async () => {
-  const id = requireId(deliveryId.value, '交付方案')
-  if (!id || !taskDescription.value.trim()) return message.warning('请填写阶段完成说明')
-  await DeliveryApi.completeDeliveryTask(id, stage.value, { description: taskDescription.value })
-  message.success('阶段已完成')
-  await loadWorkbench()
-}
-
 const submitAcceptance = async () => {
-  const id = requireId(deliveryId.value, '交付方案')
+  const id = requireId(applicationId.value, '申请单')
   if (!id) return
-  await message.confirm('确认提交整包 API 进入统一验收吗？')
-  await DeliveryApi.submitDeliveryAcceptance(id, taskDescription.value)
+  if (!acceptanceReady.value) {
+    return message.warning(acceptanceBlockers.value.join('；'))
+  }
+  await message.confirm('确认提交当前申请的全部 API 进入统一验收吗？')
+  await DeliveryApi.submitApplicationAcceptance(id, acceptanceSummary.value.trim() || undefined)
+  acceptanceSummary.value = ''
   message.success('已提交统一验收')
   await loadWorkbench()
 }
@@ -776,6 +804,11 @@ onBeforeUnmount(clearSecret)
 .wizard-panel {
   max-width: 1040px;
   margin: 0 auto;
+}
+
+.acceptance-blockers {
+  padding-left: 20px;
+  margin: 6px 0 0;
 }
 
 .wizard-section {

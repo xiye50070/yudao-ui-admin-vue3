@@ -3,6 +3,7 @@ import { APPLICATION_TYPE_OPTIONS, validateDatasetForm } from '@/views/dataMarke
 import CatalogPage from '@/views/dataMarket/catalog/index.vue'
 import DomainPage from '@/views/dataMarket/domain/index.vue'
 import TagPage from '@/views/dataMarket/tag/index.vue'
+import tagPageSource from '@/views/dataMarket/tag/index.vue?raw'
 import SourceSystemPage from '@/views/dataMarket/sourceSystem/index.vue'
 import DatasetPage from '@/views/dataMarket/dataset/index.vue'
 import AccessPolicyPage from '@/views/dataMarket/accessPolicy/index.vue'
@@ -58,5 +59,14 @@ describe('data market workbench behavior', () => {
     expect(accessPolicyPageSource).toContain('v-model="row.maxSensitivityLevel"')
     expect(accessPolicyPageSource).not.toContain('label="主体 ID"')
     expect(accessPolicyPageSource).not.toContain('prop="principalId"')
+  })
+
+  it('configures filter dimensions and requires every standard tag to select one', () => {
+    expect(tagPageSource).toContain('<el-tabs')
+    expect(tagPageSource).toContain('筛选维度')
+    expect(tagPageSource).toContain('CatalogApi.getFilterDimensions()')
+    expect(tagPageSource).toContain('v-model="tagForm.dimensionId"')
+    expect(tagPageSource).toContain('prop="dimensionId"')
+    expect(tagPageSource).toContain('请选择筛选维度')
   })
 })

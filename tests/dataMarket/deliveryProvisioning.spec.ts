@@ -1,7 +1,31 @@
 import { describe, expect, it, vi } from 'vitest'
-import { provisionConfiguredApi } from '@/views/dataMarket/deliveryWorkbench/provisioning'
+import {
+  buildProvisioningRuntime,
+  provisionConfiguredApi
+} from '@/views/dataMarket/deliveryWorkbench/provisioning'
 
 describe('delivery API provisioning', () => {
+  it('forces the hidden-debug provisioning path to a non-debug production binding', () => {
+    expect(
+      buildProvisioningRuntime(false, 'TEST', {
+        upstreamTargetRef: 'orders-test',
+        timeoutMs: 5000,
+        tlsVerify: true,
+        debugEnabled: true,
+        status: 'ENABLED'
+      })
+    ).toEqual({
+      environment: 'PRODUCTION',
+      binding: {
+        upstreamTargetRef: '',
+        timeoutMs: 5000,
+        tlsVerify: true,
+        debugEnabled: false,
+        status: 'ENABLED'
+      }
+    })
+  })
+
   it('creates the complete API only from the final in-memory wizard submission', async () => {
     const operations: string[] = []
     const client = {

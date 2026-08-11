@@ -92,4 +92,52 @@ describe('delivery workbench approval gate', () => {
     await waitFor(() => expect(view.getByText('IN_APPROVAL')).toBeInTheDocument())
     expect(view.queryByTestId('delivery-plan-form')).not.toBeInTheDocument()
   })
+
+  it('does not expose online-debug binding controls in the current release', async () => {
+    deliveryApi.getApplication.mockResolvedValue({ ...application, status: 'CONFIGURING' })
+    deliveryApi.getApplicationDelivery.mockResolvedValue({
+      id: 51,
+      applicationId: 42,
+      deliveryNo: 'DL-2026-0051',
+      status: 'CONFIGURING',
+      planDescription: '测试交付',
+      ownerUserId: 7,
+      lockVersion: 0,
+      tasks: [],
+      apis: []
+    })
+
+    const view = render(DeliveryWorkbench, {
+      global: {
+        directives: { hasPermi: {}, loading: {} },
+        stubs: {
+          ContentWrap: { template: '<section><slot /></section>' },
+          ElAlert: { props: ['title'], template: '<div>{{ title }}</div>' },
+          ElResult: { template: '<div><slot name="extra" /></div>' },
+          ElDescriptions: { template: '<div><slot /></div>' },
+          ElDescriptionsItem: { template: '<div><slot /></div>' },
+          ElForm: { template: '<form><slot /></form>' },
+          ElFormItem: { props: ['label'], template: '<label>{{ label }}<slot /></label>' },
+          ElSteps: { template: '<div><slot /></div>' },
+          ElStep: true,
+          ElInput: true,
+          ElInputNumber: true,
+          ElButton: true,
+          ElTable: true,
+          ElTableColumn: true,
+          ElSelect: true,
+          ElOption: true,
+          ElSwitch: true,
+          ElDivider: true,
+          UserDepartmentSelect: true
+        }
+      }
+    })
+
+    await view.findByText('限流策略')
+    expect(view.queryByText('超时（毫秒）')).not.toBeInTheDocument()
+    expect(view.queryByText('TLS 校验')).not.toBeInTheDocument()
+    expect(view.queryByText('受保护上游引用')).not.toBeInTheDocument()
+    expect(view.queryByText('上游引用')).not.toBeInTheDocument()
+  })
 })

@@ -8,7 +8,7 @@ import type {
 const methods: ApiVersionCreateReq['method'][] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']
 const authTypes: ApiVersionCreateReq['authType'][] = ['APP_KEY_SECRET', 'API_KEY', 'BEARER']
 const environments = ['DEVELOPMENT', 'TEST', 'PRODUCTION'] as const
-const stages = ['DELIVERY_PLAN', 'API_CONFIG', 'CREDENTIAL_CONFIG', 'DOCUMENTATION'] as const
+export const DEFAULT_DELIVERY_ENVIRONMENT: (typeof environments)[number] = 'PRODUCTION'
 const lineageSourceTypes: ApiVersionCreateReq['lineage'][number]['sourceType'][] = [
   'DATASET',
   'PROCESSING_ITEM'
@@ -27,7 +27,6 @@ export const selectDeliveryWorkbenchState = (workbench: DeliveryWorkbenchVO) => 
   const runtimeBinding = version?.runtimeBindings[0]
   const credential = api?.credentials[0]
   const authorization = credential?.authorizations[0]
-  const task = workbench.tasks.find((item) => item.status !== 'COMPLETED') ?? workbench.tasks[0]
   const method = methods.includes(version?.method as ApiVersionCreateReq['method'])
     ? (version?.method as ApiVersionCreateReq['method'])
     : 'GET'
@@ -38,10 +37,7 @@ export const selectDeliveryWorkbenchState = (workbench: DeliveryWorkbenchVO) => 
     runtimeBinding?.environment as (typeof environments)[number]
   )
     ? (runtimeBinding?.environment as (typeof environments)[number])
-    : 'TEST'
-  const stage = stages.includes(task?.stage as (typeof stages)[number])
-    ? (task?.stage as (typeof stages)[number])
-    : 'DELIVERY_PLAN'
+    : DEFAULT_DELIVERY_ENVIRONMENT
   const credentialAuthType = authTypes.includes(
     credential?.authType as CredentialCreateReq['authType']
   )
@@ -55,8 +51,6 @@ export const selectDeliveryWorkbenchState = (workbench: DeliveryWorkbenchVO) => 
     apiVersionId: version?.id,
     authorizationVersionId: authorization?.apiVersionId,
     environment,
-    stage,
-    taskDescription: task?.description ?? '',
     version: {
       versionNo: version?.versionNo ?? 'v1',
       method,

@@ -21,10 +21,20 @@ export interface SubjectDomainVO {
 
 export interface TagVO {
   id?: number
+  dimensionId?: number
   code: string
   name: string
   description?: string
   color?: string
+  sort: number
+  status: number
+}
+
+export interface FilterDimensionVO {
+  id?: number
+  code: string
+  name: string
+  description?: string
   sort: number
   status: number
 }
@@ -350,6 +360,10 @@ export interface DeliveredApiVO {
   versions: DeliveryApiVersionVO[]
   credentials: DeliveryCredentialVO[]
 }
+export interface DeliveryAcceptanceReadinessVO {
+  ready: boolean
+  unreadyApiCount: number
+}
 export interface DeliveryWorkbenchVO {
   id: number
   applicationId: number
@@ -358,6 +372,7 @@ export interface DeliveryWorkbenchVO {
   planDescription: string | null
   ownerUserId: number
   lockVersion: number
+  acceptanceReadiness?: DeliveryAcceptanceReadinessVO
   tasks: DeliveryTaskVO[]
   apis: DeliveredApiVO[]
 }

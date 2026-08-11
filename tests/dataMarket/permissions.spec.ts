@@ -18,11 +18,14 @@ describe('data-market management permission contracts', () => {
     expect(delivery).toContain('data-market:api:version:create')
     expect(delivery).toContain('data-market:api:runtime:update')
     expect(delivery).toContain('data-market:credential:create')
-    expect(delivery).toContain('data-market:delivery:task:complete')
+    expect(delivery).not.toContain('data-market:delivery:task:complete')
     expect(delivery).toContain('data-market:acceptance:submit')
     expect(acceptance).toContain('data-market:acceptance:issue-handle')
     expect(delivery).not.toContain('data-market:delivery:api-create')
     expect(acceptance).not.toContain('data-market:acceptance-issue:resolve')
+    expect(acceptance).toMatch(/submitApplicationAcceptance\(\s*applicationId\.value/)
+    expect(acceptance).not.toContain('submitDeliveryAcceptance(')
+    expect(acceptance).not.toContain('请输入交付 ID')
   })
 
   it('keeps caller-system configuration permissions independent from source-system permissions', () => {

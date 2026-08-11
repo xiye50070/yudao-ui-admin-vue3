@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import type { DeliveryWorkbenchVO } from '@/api/dataMarket/types'
-import { selectDeliveryWorkbenchState } from '@/views/dataMarket/deliveryWorkbench/restore'
+import {
+  DEFAULT_DELIVERY_ENVIRONMENT,
+  selectDeliveryWorkbenchState
+} from '@/views/dataMarket/deliveryWorkbench/restore'
 
 describe('delivery workbench restore', () => {
   it('restores editable selections from the complete management aggregate without using a secret', () => {
@@ -145,8 +148,6 @@ describe('delivery workbench restore', () => {
       apiVersionId: 72,
       authorizationVersionId: 72,
       environment: 'PRODUCTION',
-      stage: 'API_CONFIG',
-      taskDescription: '继续配置 API',
       version: {
         versionNo: 'v2',
         method: 'POST',
@@ -213,7 +214,9 @@ describe('delivery workbench restore', () => {
 
     const restored = selectDeliveryWorkbenchState(aggregate)
 
+    expect(DEFAULT_DELIVERY_ENVIRONMENT).toBe('PRODUCTION')
     expect(restored.version.authType).toBe('APP_KEY_SECRET')
     expect(restored.credential.authType).toBe('APP_KEY_SECRET')
+    expect(restored.environment).toBe('PRODUCTION')
   })
 })

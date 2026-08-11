@@ -2,6 +2,7 @@ import request from '@/config/axios'
 import type {
   DatasetFieldVO,
   DatasetVO,
+  FilterDimensionVO,
   PageParam,
   PageResult,
   SourceSystemVO,
@@ -19,6 +20,15 @@ export const updateSubjectDomain = (id: number, data: SubjectDomainVO) =>
   request.put({ url: `${management}/subject-domains/${id}`, data })
 export const deleteSubjectDomain = (id: number) =>
   request.delete({ url: `${management}/subject-domains/${id}` })
+
+export const getFilterDimensions = () =>
+  request.get<FilterDimensionVO[]>({ url: `${management}/filter-dimensions` })
+export const createFilterDimension = (data: FilterDimensionVO) =>
+  request.post({ url: `${management}/filter-dimensions`, data })
+export const updateFilterDimension = (id: number, data: FilterDimensionVO) =>
+  request.put({ url: `${management}/filter-dimensions/${id}`, data })
+export const deleteFilterDimension = (id: number) =>
+  request.delete({ url: `${management}/filter-dimensions/${id}` })
 
 export const getTags = () => request.get<TagVO[]>({ url: `${management}/tags` })
 export const createTag = (data: TagVO) => request.post({ url: `${management}/tags`, data })

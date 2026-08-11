@@ -1,7 +1,7 @@
 <template>
   <ContentWrap>
     <el-alert
-      title="按交付单加载服务端验收轮次；整改后仅当全部问题已处理，才可再次提交整包验收。"
+      title="按当前申请加载验收轮次；整改后仅当全部问题已处理，才可再次提交整包验收。"
       type="info"
       :closable="false"
       show-icon
@@ -9,13 +9,15 @@
   </ContentWrap>
   <ContentWrap>
     <el-form :inline="true" class="-mb-15px">
-      <el-form-item label="交付 ID">
-        <el-input-number v-model="deliveryId" :min="1" placeholder="输入交付 ID" />
+      <el-form-item label="申请 ID">
+        <el-tag v-if="applicationId">{{ applicationId }}</el-tag>
+        <span v-else>未指定</span>
       </el-form-item>
       <el-form-item>
         <el-button
           v-hasPermi="['data-market:acceptance:issue-query']"
           type="primary"
+          :disabled="!applicationId"
           :loading="loading"
           @click="loadRounds"
         >
@@ -33,7 +35,10 @@
     </el-form>
   </ContentWrap>
   <ContentWrap>
-    <el-empty v-if="!deliveryId && !loading" description="请输入交付 ID 查询验收轮次" />
+    <el-empty
+      v-if="!applicationId && !loading"
+      description="缺少申请 ID，请从申请管理或交付工作台进入"
+    />
     <template v-else>
       <el-descriptions v-if="rounds.length" :column="responsiveColumns" border class="mb-16px">
         <el-descriptions-item label="验收轮次">{{ latestRound?.roundNo }}</el-descriptions-item>
@@ -44,7 +49,7 @@
           unresolvedIssues.length
         }}</el-descriptions-item>
       </el-descriptions>
-      <el-table v-loading="loading" :data="issueRows" empty-text="当前交付暂无验收问题">
+      <el-table v-loading="loading" :data="issueRows" empty-text="当前申请暂无验收问题">
         <el-table-column prop="roundNo" label="轮次" width="80" />
         <el-table-column prop="apiName" label="API" min-width="140" />
         <el-table-column prop="issueType" label="问题类型" width="130" />
@@ -135,18 +140,23 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useWindowSize } from '@vueuse/core'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import * as DeliveryApi from '@/api/dataMarket/delivery'
 import type { AcceptanceIssueVO, AcceptanceRoundVO } from '@/api/dataMarket/types'
 import { useMessage } from '@/hooks/web/useMessage'
+import { resolveRouteApplicationId } from '@/views/dataMarket/deliveryWorkbench/pageState'
 import { canResubmitAcceptance } from './validation'
 
 defineOptions({ name: 'DataMarketAcceptanceIssue' })
 const message = useMessage()
+const route = useRoute()
 const router = useRouter()
 const { width } = useWindowSize()
+const applicationId = computed(() =>
+  resolveRouteApplicationId(route.query.applicationId ?? route.params.applicationId)
+)
 const deliveryId = ref<number>()
 const rounds = ref<AcceptanceRoundVO[]>([])
 const loading = ref(false)
@@ -185,10 +195,15 @@ const issueTagType = (status: AcceptanceIssueVO['status']) =>
       ? 'warning'
       : 'danger'
 const loadRounds = async () => {
-  if (!deliveryId.value) return message.warning('请输入交付 ID')
+  const id = applicationId.value
+  if (!id) return message.warning('当前页面缺少申请 ID')
   loading.value = true
+  deliveryId.value = undefined
+  rounds.value = []
   try {
-    rounds.value = await DeliveryApi.getDeliveryAcceptanceRounds(deliveryId.value)
+    const workbench = await DeliveryApi.getApplicationDelivery(id)
+    deliveryId.value = workbench.id
+    rounds.value = await DeliveryApi.getDeliveryAcceptanceRounds(workbench.id)
   } catch {
     rounds.value = []
   } finally {
@@ -214,11 +229,14 @@ const resolve = async () => {
   }
 }
 const resubmit = async () => {
-  if (!deliveryId.value || !canResubmit.value) return
+  if (!applicationId.value || !canResubmit.value) return
   await message.confirm('确认将整改后的整包 API 再次提交统一验收吗？')
   submitting.value = true
   try {
-    await DeliveryApi.submitDeliveryAcceptance(deliveryId.value, '验收问题已处理，申请再次验收')
+    await DeliveryApi.submitApplicationAcceptance(
+      applicationId.value,
+      '验收问题已处理，申请再次验收'
+    )
     message.success('已再次提交统一验收')
     await loadRounds()
   } finally {
@@ -226,4 +244,16 @@ const resubmit = async () => {
   }
 }
 const goMessageCenter = () => router.push({ name: 'MyNotifyMessage' })
+watch(
+  applicationId,
+  (id) => {
+    if (id) {
+      void loadRounds()
+      return
+    }
+    deliveryId.value = undefined
+    rounds.value = []
+  },
+  { immediate: true }
+)
 </script>

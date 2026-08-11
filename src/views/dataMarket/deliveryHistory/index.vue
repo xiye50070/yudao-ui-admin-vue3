@@ -17,7 +17,12 @@
       </el-form-item>
       <el-form-item label="交付状态">
         <el-select v-model="query.deliveryStatus" clearable placeholder="全部" class="!w-160px">
-          <el-option v-for="status in deliveryStatuses" :key="status" :label="status" :value="status" />
+          <el-option
+            v-for="status in deliveryStatuses"
+            :key="status"
+            :label="status"
+            :value="status"
+          />
         </el-select>
       </el-form-item>
       <el-form-item label="验收状态">
@@ -40,10 +45,7 @@
         />
       </el-form-item>
       <el-form-item>
-        <el-button
-          v-hasPermi="['data-market:delivery:query']"
-          type="primary"
-          @click="getList"
+        <el-button v-hasPermi="['data-market:delivery:query']" type="primary" @click="getList"
           >查询</el-button
         >
         <el-button @click="resetQuery">重置</el-button>
@@ -52,14 +54,10 @@
   </ContentWrap>
 
   <ContentWrap>
-    <el-alert
-      v-if="pageError"
-      :title="pageError"
-      type="error"
-      :closable="false"
-      class="mb-12px"
-    >
-      <template #default><el-button link type="primary" @click="getList">重新加载</el-button></template>
+    <el-alert v-if="pageError" :title="pageError" type="error" :closable="false" class="mb-12px">
+      <template #default
+        ><el-button link type="primary" @click="getList">重新加载</el-button></template
+      >
     </el-alert>
     <el-table v-loading="loading" :data="list" empty-text="暂无已完成配置的 API">
       <el-table-column prop="apiNo" label="API 编号" min-width="150" />
@@ -123,44 +121,80 @@
       />
       <template v-if="detail">
         <el-descriptions title="交付概览" :column="3" border>
-          <el-descriptions-item label="API">{{ detail.summary.apiNo }} · {{ detail.summary.apiName }}</el-descriptions-item>
-          <el-descriptions-item label="申请单">{{ detail.summary.applicationNo }}</el-descriptions-item>
-          <el-descriptions-item label="交付批次">{{ detail.summary.deliveryNo }}</el-descriptions-item>
-          <el-descriptions-item label="接口">{{ formatApiEndpoint(detail.summary.method, detail.summary.requestPath) }}</el-descriptions-item>
-          <el-descriptions-item label="配置完成">{{ formatTimestamp(detail.summary.apiConfigCompletedAt) }}</el-descriptions-item>
-          <el-descriptions-item label="验收状态">{{ acceptanceStatusLabel(detail.summary.acceptanceStatus) }}</el-descriptions-item>
+          <el-descriptions-item label="API"
+            >{{ detail.summary.apiNo }} · {{ detail.summary.apiName }}</el-descriptions-item
+          >
+          <el-descriptions-item label="申请单">{{
+            detail.summary.applicationNo
+          }}</el-descriptions-item>
+          <el-descriptions-item label="交付批次">{{
+            detail.summary.deliveryNo
+          }}</el-descriptions-item>
+          <el-descriptions-item label="接口">{{
+            formatApiEndpoint(detail.summary.method, detail.summary.requestPath)
+          }}</el-descriptions-item>
+          <el-descriptions-item label="配置完成">{{
+            formatTimestamp(detail.summary.apiConfigCompletedAt)
+          }}</el-descriptions-item>
+          <el-descriptions-item label="验收状态">{{
+            acceptanceStatusLabel(detail.summary.acceptanceStatus)
+          }}</el-descriptions-item>
         </el-descriptions>
 
         <el-tabs class="mt-16px">
           <el-tab-pane label="接口说明">
             <el-descriptions v-if="currentVersion" :column="2" border>
-              <el-descriptions-item label="版本号">{{ currentVersion.versionNo }}</el-descriptions-item>
+              <el-descriptions-item label="版本号">{{
+                currentVersion.versionNo
+              }}</el-descriptions-item>
               <el-descriptions-item label="状态">{{ currentVersion.status }}</el-descriptions-item>
-              <el-descriptions-item label="公开地址">{{ currentVersion.publicBaseUrl }}</el-descriptions-item>
-              <el-descriptions-item label="认证方式">{{ currentVersion.authType }}</el-descriptions-item>
-              <el-descriptions-item label="请求说明">{{ currentVersion.requestDescription || '—' }}</el-descriptions-item>
-              <el-descriptions-item label="返回说明">{{ currentVersion.responseDescription || '—' }}</el-descriptions-item>
-              <el-descriptions-item label="成功说明">{{ currentVersion.successDescription || '—' }}</el-descriptions-item>
-              <el-descriptions-item label="失败说明">{{ currentVersion.failureDescription || '—' }}</el-descriptions-item>
+              <el-descriptions-item label="公开地址">{{
+                currentVersion.publicBaseUrl
+              }}</el-descriptions-item>
+              <el-descriptions-item label="认证方式">{{
+                currentVersion.authType
+              }}</el-descriptions-item>
+              <el-descriptions-item label="请求说明">{{
+                currentVersion.requestDescription || '—'
+              }}</el-descriptions-item>
+              <el-descriptions-item label="返回说明">{{
+                currentVersion.responseDescription || '—'
+              }}</el-descriptions-item>
+              <el-descriptions-item label="成功说明">{{
+                currentVersion.successDescription || '—'
+              }}</el-descriptions-item>
+              <el-descriptions-item label="失败说明">{{
+                currentVersion.failureDescription || '—'
+              }}</el-descriptions-item>
             </el-descriptions>
             <el-empty v-else description="暂无版本配置" />
           </el-tab-pane>
           <el-tab-pane label="策略与 OpenAPI">
             <template v-if="currentVersion">
-              <h4>OpenAPI 文档</h4><pre class="json-view">{{ prettyJson(currentVersion.openapiDocument) }}</pre>
-              <h4>限流策略</h4><pre class="json-view">{{ prettyJson(currentVersion.rateLimitPolicy) }}</pre>
-              <h4>黑白名单与网络策略</h4><pre class="json-view">{{ prettyJson(currentVersion.networkPolicy) }}</pre>
+              <h4>OpenAPI 文档</h4
+              ><pre class="json-view">{{ prettyJson(currentVersion.openapiDocument) }}</pre>
+              <h4>限流策略</h4
+              ><pre class="json-view">{{ prettyJson(currentVersion.rateLimitPolicy) }}</pre>
+              <h4>黑白名单与网络策略</h4
+              ><pre class="json-view">{{ prettyJson(currentVersion.networkPolicy) }}</pre>
             </template>
             <el-empty v-else description="暂无策略配置" />
           </el-tab-pane>
-          <el-tab-pane label="运行绑定与血缘">
-            <el-table :data="currentVersion?.runtimeBindings || []" size="small" empty-text="暂无运行绑定">
-              <el-table-column prop="environment" label="环境" />
-              <el-table-column prop="upstreamTargetRef" label="受保护上游引用" min-width="240" />
-              <el-table-column prop="timeoutMs" label="超时 ms" />
-              <el-table-column prop="status" label="状态" />
-            </el-table>
-            <el-divider />
+          <el-tab-pane :label="DATA_MARKET_ONLINE_DEBUG_ENABLED ? '运行绑定与血缘' : '数据血缘'">
+            <!-- 在线调试能力暂时隐藏；历史绑定数据仍保留在接口和模型中。 -->
+            <template v-if="DATA_MARKET_ONLINE_DEBUG_ENABLED">
+              <el-table
+                :data="currentVersion?.runtimeBindings || []"
+                size="small"
+                empty-text="暂无运行绑定"
+              >
+                <el-table-column prop="environment" label="环境" />
+                <el-table-column prop="upstreamTargetRef" label="受保护上游引用" min-width="240" />
+                <el-table-column prop="timeoutMs" label="超时 ms" />
+                <el-table-column prop="status" label="状态" />
+              </el-table>
+              <el-divider />
+            </template>
             <el-table :data="currentVersion?.lineage || []" size="small" empty-text="暂无血缘配置">
               <el-table-column prop="sourceType" label="来源类型" />
               <el-table-column prop="sourceId" label="来源标识" />
@@ -177,7 +211,10 @@
               <el-table-column prop="secretMasked" label="密钥（脱敏）" min-width="160" />
               <el-table-column prop="status" label="状态" />
               <el-table-column label="有效期" min-width="260">
-                <template #default="{ row }">{{ formatTimestamp(row.effectiveAt) }} 至 {{ formatTimestamp(row.expiresAt) }}</template>
+                <template #default="{ row }"
+                  >{{ formatTimestamp(row.effectiveAt) }} 至
+                  {{ formatTimestamp(row.expiresAt) }}</template
+                >
               </el-table-column>
             </el-table>
           </el-tab-pane>
@@ -190,6 +227,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import * as DeliveryApi from '@/api/dataMarket/delivery'
+import { DATA_MARKET_ONLINE_DEBUG_ENABLED } from '@/config/dataMarketFeatures'
 import type {
   DeliveredApiAcceptanceStatus,
   DeliveredApiHistoryDetailVO,
@@ -276,8 +314,8 @@ onMounted(getList)
 <style scoped>
 .secondary-text {
   margin-top: 4px;
-  color: var(--el-text-color-secondary);
   font-size: 12px;
+  color: var(--el-text-color-secondary);
 }
 
 .detail-body {
@@ -286,13 +324,13 @@ onMounted(getList)
 
 .json-view {
   max-height: 320px;
-  margin: 8px 0 16px;
   padding: 12px;
+  margin: 8px 0 16px;
   overflow: auto;
+  word-break: break-all;
+  white-space: pre-wrap;
+  background: var(--el-fill-color-light);
   border: 1px solid var(--el-border-color-lighter);
   border-radius: 6px;
-  background: var(--el-fill-color-light);
-  white-space: pre-wrap;
-  word-break: break-all;
 }
 </style>
