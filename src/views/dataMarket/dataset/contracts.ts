@@ -18,5 +18,6 @@ export const createEmptyDatasetField = (datasetId: number, displayOrder = 1): Da
 
 export const toDatasetFieldSaveReq = ({
   datasetId: _datasetId,
+  standard: _standard,
   ...field
 }: DatasetFieldVO): DatasetFieldSaveReq => field

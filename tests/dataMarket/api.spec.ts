@@ -75,6 +75,49 @@ describe('data market API contracts', () => {
     })
   })
 
+  it('uses one reusable standard resource for CRUD and dedicated field binding', () => {
+    const data = {
+      standardCode: 'EMPLOYEE_STATUS',
+      standardName: '员工状态',
+      standardType: 'ENUM' as const,
+      description: '在离职状态',
+      content: { items: [{ value: '1', description: '在职' }] }
+    }
+
+    CatalogApi.getDataStandardPage({ pageNo: 1, pageSize: 20, keyword: '员工' })
+    CatalogApi.getDataStandard(31)
+    CatalogApi.createDataStandard(data)
+    CatalogApi.updateDataStandard(31, 4, data)
+    CatalogApi.bindDatasetFieldStandard(11, 21, 31)
+    CatalogApi.unbindDatasetFieldStandard(11, 21)
+
+    expect(request.get).toHaveBeenNthCalledWith(1, {
+      url: '/data-market/management/data-standards',
+      params: { pageNo: 1, pageSize: 20, keyword: '员工' }
+    })
+    expect(request.get).toHaveBeenNthCalledWith(2, {
+      url: '/data-market/management/data-standards/31'
+    })
+    expect(request.post).toHaveBeenCalledWith({
+      url: '/data-market/management/data-standards',
+      data
+    })
+    expect(request.put).toHaveBeenNthCalledWith(1, {
+      url: '/data-market/management/data-standards/31',
+      headers: { 'If-Match-Version': '4' },
+      returnBusinessError: true,
+      validateStatus: expect.any(Function),
+      data
+    })
+    expect(request.put).toHaveBeenNthCalledWith(2, {
+      url: '/data-market/management/datasets/11/fields/21/standard',
+      data: { standardId: 31 }
+    })
+    expect(request.delete).toHaveBeenCalledWith({
+      url: '/data-market/management/datasets/11/fields/21/standard'
+    })
+  })
+
   it('uses backend CRUD endpoints for configurable filter dimensions', () => {
     const dimension = { code: 'SOURCE_TYPE', name: '数据源类型', sort: 10, status: 0 }
 

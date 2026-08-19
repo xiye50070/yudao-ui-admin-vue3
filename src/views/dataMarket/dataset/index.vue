@@ -38,7 +38,7 @@
         ><template #default="{ row }">{{
           row.publishStatus === 1 ? '已发布' : '草稿'
         }}</template></el-table-column
-      ><el-table-column label="操作" width="250"
+      ><el-table-column label="操作" width="340"
         ><template #default="{ row }"
           ><el-button
             v-hasPermi="['data-market:dataset:update']"
@@ -52,6 +52,12 @@
             type="primary"
             @click="openFields(row)"
             >字段</el-button
+          ><el-button
+            v-hasPermi="['data-market:data-standard:query']"
+            link
+            type="primary"
+            @click="openStandards(row)"
+            >数据标准</el-button
           ><el-button
             v-hasPermi="['data-market:access-policy:update']"
             link
@@ -113,6 +119,11 @@
         @save="save"
         @publish="openPublish(form)" /></template
   ></el-drawer>
+  <DatasetStandardDrawer
+    v-model="standardVisible"
+    :dataset-id="standardDatasetId"
+    :dataset-name="standardDatasetName"
+  />
   <Dialog v-model="fieldVisible" title="字段编辑" width="min(1280px, 96vw)"
     ><el-alert
       title="物理字段名对应来源数据表的列名（例如 EMPLOYEE_ID），并非系统主键 ID；可返回、可查询由申请人按申请单选择。"
@@ -247,6 +258,7 @@ import {
   type SourceSystemOption
 } from '@/views/dataMarket/referenceSelectors'
 import DatasetActions from './DatasetActions.vue'
+import DatasetStandardDrawer from './DatasetStandardDrawer.vue'
 import { createEmptyDatasetField, toDatasetFieldSaveReq } from './contracts'
 import { useMessage } from '@/hooks/web/useMessage'
 defineOptions({ name: 'DataMarketDataset' })
@@ -257,6 +269,7 @@ const total = ref(0)
 const query = reactive({ pageNo: 1, pageSize: 10, keyword: '' })
 const drawer = ref(false)
 const fieldVisible = ref(false)
+const standardVisible = ref(false)
 const aclVisible = ref(false)
 const publishVisible = ref(false)
 const subjectDomains = ref<SubjectDomainVO[]>([])
@@ -266,6 +279,8 @@ const sourceSystemOptions = ref<SourceSystemOption[]>([])
 const sourceSystemLoading = ref(false)
 const formRef = ref<any>()
 const currentId = ref<number>()
+const standardDatasetId = ref<number>()
+const standardDatasetName = ref('')
 const fields = ref<DatasetFieldVO[]>([])
 const aclRules = ref<DatasetAclRule[]>([])
 const aclDatasetId = ref<number>()
@@ -418,6 +433,12 @@ const openFields = async (row: DatasetVO) => {
   currentId.value = row.id
   fields.value = row.id ? await CatalogApi.getDatasetFields(row.id) : []
   fieldVisible.value = true
+}
+const openStandards = (row: DatasetVO) => {
+  if (!row.id) return message.warning('请先保存数据集')
+  standardDatasetId.value = row.id
+  standardDatasetName.value = row.businessName
+  standardVisible.value = true
 }
 const openAcl = async (row: DatasetVO) => {
   if (!row.id) return

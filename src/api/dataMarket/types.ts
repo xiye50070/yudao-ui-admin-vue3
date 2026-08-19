@@ -67,6 +67,50 @@ export interface DatasetFieldVO {
   status: number
   metadataVersion?: string
   displayOrder?: number
+  standard?: DataStandardSummary
+}
+
+export type DataStandardType = 'ENUM' | 'RANGE' | 'CODING'
+export type DataStandardRangeValueType = 'NUMBER' | 'DATE' | 'DATETIME'
+
+export interface DataStandardContent {
+  items?: Array<{ value: string; description: string }>
+  valueType?: DataStandardRangeValueType
+  lowerBound?: string
+  upperBound?: string
+  lowerInclusive?: boolean
+  upperInclusive?: boolean
+  unit?: string
+  rangeDescription?: string
+  formatExpression?: string
+  example?: string
+  ruleDescription?: string
+}
+
+export interface DataStandardSaveReq {
+  standardCode: string
+  standardName: string
+  standardType: DataStandardType
+  description?: string
+  content: DataStandardContent
+}
+
+export interface DataStandardSummary {
+  id: number
+  standardCode: string
+  standardName: string
+  standardType: DataStandardType
+  description?: string
+  summary: string
+  updateTime: string
+  associatedDatasetCount: number
+  associatedFieldCount: number
+}
+
+export interface DataStandardDetail extends DataStandardSummary {
+  contentSchemaVersion: number
+  content: DataStandardContent
+  lockVersion: number
 }
 
 export interface DatasetVO {

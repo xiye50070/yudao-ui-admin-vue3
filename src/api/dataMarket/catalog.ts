@@ -2,6 +2,10 @@ import request from '@/config/axios'
 import type {
   DatasetFieldVO,
   DatasetVO,
+  DataStandardDetail,
+  DataStandardSaveReq,
+  DataStandardSummary,
+  DataStandardType,
   FilterDimensionVO,
   PageParam,
   PageResult,
@@ -57,9 +61,32 @@ export const updateDataset = (id: number, data: DatasetVO) =>
 export const deleteDataset = (id: number) => request.delete({ url: `${management}/datasets/${id}` })
 export const getDatasetFields = (id: number) =>
   request.get<DatasetFieldVO[]>({ url: `${management}/datasets/${id}/fields` })
-export type DatasetFieldSaveReq = Omit<DatasetFieldVO, 'datasetId'>
+export type DatasetFieldSaveReq = Omit<DatasetFieldVO, 'datasetId' | 'standard'>
 export const updateDatasetFields = (id: number, fields: DatasetFieldSaveReq[]) =>
   request.put({ url: `${management}/datasets/${id}/fields`, data: { fields } })
+
+export const getDataStandardPage = (
+  params: PageParam & { keyword?: string; standardType?: DataStandardType }
+) => request.get<PageResult<DataStandardSummary>>({ url: `${management}/data-standards`, params })
+export const getDataStandard = (id: number) =>
+  request.get<DataStandardDetail>({ url: `${management}/data-standards/${id}` })
+export const createDataStandard = (data: DataStandardSaveReq) =>
+  request.post<number>({ url: `${management}/data-standards`, data })
+export const updateDataStandard = (id: number, lockVersion: number, data: DataStandardSaveReq) =>
+  request.put<DataStandardDetail>({
+    url: `${management}/data-standards/${id}`,
+    headers: { 'If-Match-Version': String(lockVersion) },
+    returnBusinessError: true,
+    validateStatus: (status: number) => status >= 200 && status < 500,
+    data
+  })
+export const bindDatasetFieldStandard = (datasetId: number, fieldId: number, standardId: number) =>
+  request.put({
+    url: `${management}/datasets/${datasetId}/fields/${fieldId}/standard`,
+    data: { standardId }
+  })
+export const unbindDatasetFieldStandard = (datasetId: number, fieldId: number) =>
+  request.delete({ url: `${management}/datasets/${datasetId}/fields/${fieldId}/standard` })
 export interface DatasetPublishReq {
   subjectDomainId: number
   tagIds: number[]
