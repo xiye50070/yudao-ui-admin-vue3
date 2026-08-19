@@ -1,5 +1,20 @@
 import type { DataStandardSaveReq, DataStandardType } from '@/api/dataMarket/types'
 
+const ALL_PERMISSION = '*:*:*'
+
+export const hasAllPermissions = (permissions: Set<string>, required: string[]) =>
+  permissions.has(ALL_PERMISSION) || required.every((permission) => permissions.has(permission))
+
+export const resolveDataStandardErrorMessage = (error: unknown, fallback: string) => {
+  const value = error as {
+    msg?: unknown
+    response?: { data?: { msg?: unknown } }
+  }
+  if (typeof value?.msg === 'string' && value.msg.trim()) return value.msg
+  const responseMessage = value?.response?.data?.msg
+  return typeof responseMessage === 'string' && responseMessage.trim() ? responseMessage : fallback
+}
+
 export const createEmptyStandardDraft = (type: DataStandardType = 'ENUM'): DataStandardSaveReq => ({
   standardCode: '',
   standardName: '',

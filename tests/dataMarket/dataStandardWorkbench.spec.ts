@@ -25,6 +25,7 @@ describe('dataset data-standard workbench', () => {
     expect(source).toContain('data-market:data-standard:bind')
     expect(source).toContain('data-market:data-standard:create')
     expect(source).toContain('data-market:data-standard:update')
+    expect(source).toContain('v-if="canCreateAndBind"')
   })
 
   it('provides typed editors and warns before changing a shared standard', () => {

@@ -5,6 +5,8 @@ import {
 } from '@/views/dataMarket/dataset/contracts'
 import {
   createEmptyStandardDraft,
+  hasAllPermissions,
+  resolveDataStandardErrorMessage,
   validateStandardDraft
 } from '@/views/dataMarket/dataset/standardContracts'
 
@@ -69,5 +71,31 @@ describe('data-market catalog editor contracts', () => {
     expect(validateStandardDraft(codingDraft)).toBeUndefined()
     codingDraft.content.ruleDescription = ''
     expect(validateStandardDraft(codingDraft)).toContain('规则说明')
+  })
+
+  it('requires both create and bind permissions for the compound create-and-bind action', () => {
+    expect(
+      hasAllPermissions(new Set(['data-market:data-standard:create']), [
+        'data-market:data-standard:create',
+        'data-market:data-standard:bind'
+      ])
+    ).toBe(false)
+    expect(
+      hasAllPermissions(
+        new Set(['data-market:data-standard:create', 'data-market:data-standard:bind']),
+        ['data-market:data-standard:create', 'data-market:data-standard:bind']
+      )
+    ).toBe(true)
+    expect(hasAllPermissions(new Set(['*:*:*']), ['missing:permission'])).toBe(true)
+  })
+
+  it('surfaces structured business errors and falls back for transport failures', () => {
+    expect(resolveDataStandardErrorMessage({ msg: '标准编码已存在' }, '保存失败')).toBe(
+      '标准编码已存在'
+    )
+    expect(
+      resolveDataStandardErrorMessage({ response: { data: { msg: '标准名称不合法' } } }, '保存失败')
+    ).toBe('标准名称不合法')
+    expect(resolveDataStandardErrorMessage(new Error('network'), '保存失败')).toBe('保存失败')
   })
 })

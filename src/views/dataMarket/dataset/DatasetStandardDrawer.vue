@@ -66,12 +66,7 @@
                 </div>
               </el-option>
             </el-select>
-            <el-button
-              v-hasPermi="['data-market:data-standard:create']"
-              link
-              type="primary"
-              @click="openCreate(row)"
-            >
+            <el-button v-if="canCreateAndBind" link type="primary" @click="openCreate(row)">
               新建并绑定
             </el-button>
             <el-button
@@ -123,6 +118,8 @@ import type {
 } from '@/api/dataMarket/types'
 import DataStandardEditorDialog from './DataStandardEditorDialog.vue'
 import { useMessage } from '@/hooks/web/useMessage'
+import { useUserStoreWithOut } from '@/store/modules/user'
+import { hasAllPermissions, resolveDataStandardErrorMessage } from './standardContracts'
 
 const props = defineProps<{
   modelValue: boolean
@@ -135,6 +132,7 @@ const emit = defineEmits<{
 }>()
 
 const message = useMessage()
+const userStore = useUserStoreWithOut()
 const loading = ref(false)
 const submitting = ref(false)
 const fields = ref<DatasetFieldVO[]>([])
@@ -148,6 +146,13 @@ const visible = computed({
   get: () => props.modelValue,
   set: (value) => emit('update:modelValue', value)
 })
+
+const canCreateAndBind = computed(() =>
+  hasAllPermissions(userStore.permissions, [
+    'data-market:data-standard:create',
+    'data-market:data-standard:bind'
+  ])
+)
 
 const filteredFields = computed(() => {
   const keyword = fieldKeyword.value.trim().toLowerCase()
@@ -259,7 +264,7 @@ const saveStandard = async (data: DataStandardSaveReq) => {
         )
       } catch (error) {
         if (!isVersionConflict(error)) {
-          message.error('标准保存失败，请重试')
+          message.error(resolveDataStandardErrorMessage(error, '标准保存失败，请重试'))
           return
         }
         await reloadEditingStandard()
