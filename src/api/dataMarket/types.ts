@@ -56,6 +56,12 @@ export interface DatasetFieldVO {
   fieldCode: string
   fieldName: string
   dataType: string
+  logicalTypeId?: number
+  logicalTypeCode?: string
+  logicalTypeName?: string
+  logicalTypeStatus?: number
+  logicalTypeMatchStatus?: 'ASSIGNED' | 'MATCHED' | 'UNMATCHED' | 'CONFLICT' | 'INVALID'
+  logicalTypeCandidates?: Array<{ id: number; code: string; name: string }>
   length?: number
   precisionValue?: number
   scaleValue?: number
