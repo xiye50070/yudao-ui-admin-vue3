@@ -16,6 +16,7 @@ import * as SecurityApi from '@/api/dataMarket/security'
 import * as MetadataApi from '@/api/dataMarket/metadata'
 import * as WorkflowApi from '@/api/dataMarket/workflow'
 import * as DeliveryApi from '@/api/dataMarket/delivery'
+import * as PreprocessingApi from '@/api/dataMarket/preprocessing'
 
 describe('data market API contracts', () => {
   beforeEach(() => vi.clearAllMocks())
@@ -200,6 +201,43 @@ describe('data market API contracts', () => {
     expect(request.get).toHaveBeenCalledWith({
       url: '/data-market/management/applications/17/delivery',
       returnBusinessError: true
+    })
+  })
+
+  it('uses the independent preprocessing rule management endpoints', () => {
+    const rule = {
+      code: 'TRIM',
+      name: '去除首尾空格',
+      category: 'STANDARDIZE',
+      description: '去除文本两侧空白',
+      parameterSchema: '{}',
+      sort: 10,
+      status: 0
+    }
+
+    PreprocessingApi.getPreprocessingRulePage({ pageNo: 1, pageSize: 10, keyword: 'TRIM' })
+    PreprocessingApi.getEnabledPreprocessingRules()
+    PreprocessingApi.createPreprocessingRule(rule)
+    PreprocessingApi.updatePreprocessingRule(101, rule)
+    PreprocessingApi.deletePreprocessingRule(101)
+
+    expect(request.get).toHaveBeenNthCalledWith(1, {
+      url: '/data-market/management/preprocessing-rule-templates',
+      params: { pageNo: 1, pageSize: 10, keyword: 'TRIM' }
+    })
+    expect(request.get).toHaveBeenNthCalledWith(2, {
+      url: '/data-market/management/preprocessing-rule-templates/simple-list'
+    })
+    expect(request.post).toHaveBeenCalledWith({
+      url: '/data-market/management/preprocessing-rule-templates',
+      data: rule
+    })
+    expect(request.put).toHaveBeenCalledWith({
+      url: '/data-market/management/preprocessing-rule-templates/101',
+      data: rule
+    })
+    expect(request.delete).toHaveBeenCalledWith({
+      url: '/data-market/management/preprocessing-rule-templates/101'
     })
   })
 })
