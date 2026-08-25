@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  buildApplicationResourcePresentation,
   describeApplicationBaseInfo,
   describeProcessingAdvancedSettings
 } from '@/views/dataMarket/application/presentation'
@@ -62,5 +63,109 @@ describe('application detail presentation', () => {
       { label: '分组字段', value: '11、21' },
       { label: '聚合规则', value: 'SUM(31) AS amount_sum；COUNT(*) AS record_count' }
     ])
+  })
+
+  it('separates ordinary datasets and groups M1/M2 components under one master-data object', () => {
+    const ordinary = {
+      applicationDatasetId: 1,
+      datasetId: 101,
+      datasetSnapshot: { businessName: '测试数据集', datasetCode: 'TEST' },
+      fields: []
+    }
+    const employee = {
+      applicationDatasetId: 2,
+      datasetId: 201,
+      datasetSnapshot: { businessName: '测试人员信息数据集', datasetCode: 'test_employee' },
+      fields: []
+    }
+    const family = {
+      applicationDatasetId: 3,
+      datasetId: 202,
+      datasetSnapshot: { businessName: '测试家庭信息数据集', datasetCode: 'test_family' },
+      fields: []
+    }
+
+    const result = buildApplicationResourcePresentation({
+      datasets: [ordinary, employee, family],
+      resourceGroups: [
+        {
+          id: 11,
+          resourceType: 'DATASET',
+          resourceId: 101,
+          resourceVersionNo: null,
+          resourceSnapshot: { businessName: '测试数据集', datasetCode: 'TEST' },
+          displayOrder: 1,
+          components: []
+        },
+        {
+          id: 12,
+          resourceType: 'MASTER_OBJECT',
+          resourceId: 7,
+          resourceVersionNo: 3,
+          resourceSnapshot: {
+            objectName: '人员信息主数据',
+            objectCode: 'EMPLOYEE',
+            versionNo: 3
+          },
+          displayOrder: 2,
+          components: [
+            {
+              masterComponentId: 71,
+              componentKey: 'employee',
+              applicationDatasetId: 2,
+              componentSnapshot: {
+                displayName: '测试人员信息数据集',
+                levelCode: 'M1',
+                componentCategory: 'CORE'
+              },
+              requestedFieldIds: [21],
+              automaticFieldIds: [],
+              displayOrder: 1
+            },
+            {
+              masterComponentId: 72,
+              componentKey: 'family',
+              applicationDatasetId: 3,
+              componentSnapshot: {
+                displayName: '测试家庭信息数据集',
+                levelCode: 'M2',
+                componentCategory: 'RELATION'
+              },
+              requestedFieldIds: [31],
+              automaticFieldIds: [32],
+              displayOrder: 2
+            }
+          ]
+        }
+      ]
+    })
+
+    expect(result.ordinaryDatasets.map((item) => item.dataset.applicationDatasetId)).toEqual([1])
+    expect(result.masterObjects).toHaveLength(1)
+    expect(result.masterObjects[0]).toMatchObject({
+      name: '人员信息主数据',
+      code: 'EMPLOYEE',
+      versionNo: 3,
+      components: [
+        { componentKey: 'employee', levelCode: 'M1', levelLabel: 'M1 核心' },
+        { componentKey: 'family', levelCode: 'M2', levelLabel: 'M2 关系' }
+      ]
+    })
+  })
+
+  it('treats every dataset as ordinary when an old application has no resource groups', () => {
+    const result = buildApplicationResourcePresentation({
+      datasets: [
+        {
+          applicationDatasetId: 1,
+          datasetId: 101,
+          datasetSnapshot: { businessName: '历史数据集', datasetCode: 'LEGACY' },
+          fields: []
+        }
+      ]
+    })
+
+    expect(result.ordinaryDatasets).toHaveLength(1)
+    expect(result.masterObjects).toEqual([])
   })
 })

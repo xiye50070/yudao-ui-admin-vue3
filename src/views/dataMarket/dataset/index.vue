@@ -175,26 +175,93 @@
       ></template
     ></Dialog
   >
-  <Dialog v-model="aclVisible" title="数据集 ACL" width="620px"
-    ><el-table :data="aclRules"
-      ><el-table-column label="主体类型"
+  <Dialog v-model="aclVisible" title="数据集 ACL" width="760px"
+    ><el-alert
+      title="按部门或角色配置可见范围；多条规则任一命中即可访问。未配置规则时，数据集对当前租户内符合敏感级许可的用户可见。"
+      type="info"
+      :closable="false"
+      class="mb-12px"
+    />
+    <el-table v-loading="aclLoading" :data="aclRules" empty-text="暂未配置 ACL"
+      ><el-table-column label="主体类型" width="130"
         ><template #default="{ row }"
-          ><el-select v-model="row.principalType"
+          ><el-select
+            v-model="row.principalType"
+            class="!w-1/1"
+            @change="handleAclPrincipalTypeChange(row)"
             ><el-option value="DEPT" label="部门" /><el-option
               value="ROLE"
               label="角色" /></el-select></template></el-table-column
-      ><el-table-column label="主体 ID"
+      ><el-table-column label="授权主体" min-width="300"
         ><template #default="{ row }"
-          ><el-input-number v-model="row.principalId" :min="1" /></template></el-table-column
-      ><el-table-column label="含子部门"
+          ><div class="acl-principal-cell">
+            <el-tree-select
+              v-if="row.principalType === 'DEPT'"
+              v-model="row.principalId"
+              class="!w-1/1"
+              :data="departmentTree"
+              :props="defaultProps"
+              node-key="id"
+              check-strictly
+              clearable
+              filterable
+              placeholder="请选择部门"
+              @change="row.invalidPrincipal = false"
+            />
+            <el-select
+              v-else
+              v-model="row.principalId"
+              class="!w-1/1"
+              clearable
+              filterable
+              placeholder="请选择角色"
+              @change="row.invalidPrincipal = false"
+            >
+              <el-option
+                v-for="role in aclRoles"
+                :key="role.id"
+                :label="formatAclRoleLabel(role)"
+                :value="role.id"
+              >
+                <span>{{ role.name }}</span>
+                <el-tag v-if="role.code" class="ml-8px" size="small" type="info">
+                  {{ role.code }}
+                </el-tag>
+              </el-option>
+            </el-select>
+            <p v-if="row.invalidPrincipal" class="acl-stale-warning">
+              原授权主体已不存在，请重新选择或删除
+            </p>
+          </div></template
+        ></el-table-column
+      ><el-table-column label="含子部门" width="120" align="center"
         ><template #default="{ row }"
           ><el-switch
             v-model="row.includeChildDept"
-            :disabled="row.principalType === 'ROLE'" /></template></el-table-column></el-table
-    ><el-button v-hasPermi="['data-market:access-policy:update']" class="mt-12px" @click="addAcl"
+            :disabled="row.principalType === 'ROLE'" /></template></el-table-column
+      ><el-table-column label="操作" width="80" align="center"
+        ><template #default="{ $index }"
+          ><el-button
+            v-hasPermi="['data-market:access-policy:update']"
+            link
+            type="danger"
+            @click="removeAcl($index)"
+            >删除</el-button
+          ></template
+        ></el-table-column
+      ></el-table
+    ><el-button
+      v-hasPermi="['data-market:access-policy:update']"
+      class="mt-12px"
+      :disabled="aclLoading"
+      @click="addAcl"
       >新增 ACL</el-button
     ><template #footer
-      ><el-button v-hasPermi="['data-market:access-policy:update']" type="primary" @click="saveAcl"
+      ><el-button
+        v-hasPermi="['data-market:access-policy:update']"
+        type="primary"
+        :disabled="aclLoading"
+        @click="saveAcl"
         >保存 ACL</el-button
       ></template
     ></Dialog
@@ -241,7 +308,9 @@
   >
 </template>
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import * as DeptApi from '@/api/system/dept'
+import * as RoleApi from '@/api/system/role'
 import * as CatalogApi from '@/api/dataMarket/catalog'
 import type {
   DatasetAclRule,
@@ -261,6 +330,13 @@ import DatasetActions from './DatasetActions.vue'
 import DatasetStandardDrawer from './DatasetStandardDrawer.vue'
 import { createEmptyDatasetField, toDatasetFieldSaveReq } from './contracts'
 import { useMessage } from '@/hooks/web/useMessage'
+import { defaultProps, handleTree } from '@/utils/tree'
+
+interface EditableDatasetAclRule extends Omit<DatasetAclRule, 'principalId'> {
+  principalId?: number
+  invalidPrincipal?: boolean
+}
+
 defineOptions({ name: 'DataMarketDataset' })
 const message = useMessage()
 const loading = ref(false)
@@ -271,6 +347,7 @@ const drawer = ref(false)
 const fieldVisible = ref(false)
 const standardVisible = ref(false)
 const aclVisible = ref(false)
+const aclLoading = ref(false)
 const publishVisible = ref(false)
 const subjectDomains = ref<SubjectDomainVO[]>([])
 const tags = ref<TagVO[]>([])
@@ -282,13 +359,16 @@ const currentId = ref<number>()
 const standardDatasetId = ref<number>()
 const standardDatasetName = ref('')
 const fields = ref<DatasetFieldVO[]>([])
-const aclRules = ref<DatasetAclRule[]>([])
+const aclRules = ref<EditableDatasetAclRule[]>([])
+const aclDepartments = ref<DeptApi.DeptVO[]>([])
+const aclRoles = ref<RoleApi.RoleVO[]>([])
 const aclDatasetId = ref<number>()
 const publishingId = ref<number>()
 const publishFormRef = ref<any>()
 let subjectDomainRequest: Promise<void> | undefined
 let tagRequest: Promise<void> | undefined
 let sourceSearchSequence = 0
+let aclLoadSequence = 0
 const publishForm = reactive({
   subjectDomainId: undefined as number | undefined,
   tagIds: [] as number[],
@@ -326,11 +406,23 @@ const subjectDomainNameMap = computed(
 const tagOptions = computed(() =>
   tags.value.filter((tag): tag is TagVO & { id: number } => tag.id !== undefined)
 )
+const departmentTree = computed(() =>
+  handleTree(aclDepartments.value.map((department) => ({ ...department })))
+)
+
+watch(aclVisible, (visible) => {
+  if (visible) return
+  aclLoadSequence += 1
+  aclLoading.value = false
+  aclDatasetId.value = undefined
+})
 
 const resolveSourceSystemName = (id?: number) =>
   id === undefined ? '—' : sourceSystemNameMap.value.get(id) || '已停用或不可见'
 const resolveSubjectDomainName = (id?: number) =>
   id === undefined ? '—' : subjectDomainNameMap.value.get(id) || '已停用或不可见'
+const formatAclRoleLabel = (role: Pick<RoleApi.RoleVO, 'name' | 'code'>) =>
+  role.code ? `${role.name}（${role.code}）` : role.name
 
 const loadSubjectDomains = () => {
   if (subjectDomainRequest) return subjectDomainRequest
@@ -442,16 +534,68 @@ const openStandards = (row: DatasetVO) => {
 }
 const openAcl = async (row: DatasetVO) => {
   if (!row.id) return
-  aclDatasetId.value = row.id
-  aclRules.value = await SecurityApi.getDatasetAcl(row.id)
+  const datasetId = row.id
+  const sequence = ++aclLoadSequence
+  aclDatasetId.value = datasetId
+  aclRules.value = []
   aclVisible.value = true
+  aclLoading.value = true
+  try {
+    const [rules, departments, roles] = await Promise.all([
+      SecurityApi.getDatasetAcl(datasetId),
+      DeptApi.getSimpleDeptList(),
+      RoleApi.getSimpleRoleList()
+    ])
+    if (sequence !== aclLoadSequence || aclDatasetId.value !== datasetId || !aclVisible.value)
+      return
+    aclDepartments.value = departments
+    aclRoles.value = roles
+    const departmentIds = new Set(departments.map((department) => department.id))
+    const roleIds = new Set(roles.map((role) => role.id))
+    aclRules.value = rules.map((rule) => {
+      const principalExists =
+        rule.principalType === 'DEPT'
+          ? departmentIds.has(rule.principalId)
+          : roleIds.has(rule.principalId)
+      return {
+        ...rule,
+        principalId: principalExists ? rule.principalId : undefined,
+        includeChildDept: rule.principalType === 'DEPT' ? Boolean(rule.includeChildDept) : false,
+        invalidPrincipal: !principalExists
+      }
+    })
+  } catch {
+    if (sequence !== aclLoadSequence || aclDatasetId.value !== datasetId || !aclVisible.value)
+      return
+    aclRules.value = []
+    aclDatasetId.value = undefined
+    aclVisible.value = false
+    message.error('ACL 配置加载失败，请重试')
+  } finally {
+    if (sequence === aclLoadSequence) aclLoading.value = false
+  }
 }
 const addAcl = () =>
-  aclRules.value.push({ principalType: 'DEPT', principalId: 0, includeChildDept: false })
+  aclRules.value.push({ principalType: 'DEPT', principalId: undefined, includeChildDept: false })
+const handleAclPrincipalTypeChange = (row: EditableDatasetAclRule) => {
+  row.principalId = undefined
+  row.invalidPrincipal = false
+  if (row.principalType === 'ROLE') row.includeChildDept = false
+}
+const removeAcl = (index: number) => aclRules.value.splice(index, 1)
 const saveAcl = async () => {
-  if (!aclDatasetId.value || aclRules.value.some((item) => !item.principalId))
-    return message.warning('ACL 主体 ID 不能为空')
-  await SecurityApi.updateDatasetAcl(aclDatasetId.value, aclRules.value)
+  if (!aclDatasetId.value || aclLoading.value) return
+  if (aclRules.value.some((item) => item.principalId === undefined))
+    return message.warning('请选择授权部门或角色')
+  const principalKeys = aclRules.value.map((item) => `${item.principalType}:${item.principalId}`)
+  if (new Set(principalKeys).size !== principalKeys.length)
+    return message.warning('同一部门或角色不能重复授权')
+  const rules: DatasetAclRule[] = aclRules.value.map((item) => ({
+    principalType: item.principalType,
+    principalId: item.principalId!,
+    includeChildDept: item.principalType === 'DEPT' && Boolean(item.includeChildDept)
+  }))
+  await SecurityApi.updateDatasetAcl(aclDatasetId.value, rules)
   aclVisible.value = false
   message.success('ACL 已保存')
 }
@@ -505,3 +649,15 @@ onMounted(() => {
   searchSourceSystems()
 })
 </script>
+<style scoped>
+.acl-principal-cell {
+  padding: 4px 0;
+}
+
+.acl-stale-warning {
+  margin: 4px 0 0;
+  color: var(--el-color-danger);
+  font-size: 12px;
+  line-height: 1.4;
+}
+</style>

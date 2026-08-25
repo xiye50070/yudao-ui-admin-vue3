@@ -138,30 +138,7 @@
           >{{ item.value }}</el-descriptions-item
         ></el-descriptions
       ><el-divider content-position="left">数据集、字段与查询条件</el-divider
-      ><el-collapse
-        ><el-collapse-item
-          v-for="dataset in detail.datasets"
-          :key="dataset.applicationDatasetId"
-          :title="dataset.datasetSnapshot.businessName || dataset.datasetSnapshot.datasetCode"
-          ><el-table :data="dataset.fields" size="small"
-            ><el-table-column prop="fieldName" label="字段" /><el-table-column
-              prop="dataType"
-              label="类型"
-            /><el-table-column prop="sensitivityLevel" label="敏感级" /><el-table-column
-              label="返回"
-              ><template #default="{ row }"
-                ><el-tag :type="row.returnSelected ? 'success' : 'info'">{{
-                  row.returnSelected ? '是' : '否'
-                }}</el-tag></template
-              ></el-table-column
-            ><el-table-column label="查询条件"
-              ><template #default="{ row }">{{
-                row.querySelected ? (row.queryCapabilities || []).join('、') : '否'
-              }}</template></el-table-column
-            ></el-table
-          ></el-collapse-item
-        ></el-collapse
-      ><template v-if="detail.cleaningRules?.length"
+      ><ApplicationResourceDetail :detail="detail" /> ><template v-if="detail.cleaningRules?.length"
         ><el-divider content-position="left">历史清洗规则（只读）</el-divider
         ><el-table :data="detail.cleaningRules" size="small"
           ><el-table-column prop="datasetId" label="数据集" /><el-table-column
@@ -226,6 +203,7 @@ import type {
   TimelineItem
 } from '@/api/dataMarket/types'
 import { formatDate } from '@/utils/formatTime'
+import ApplicationResourceDetail from './ApplicationResourceDetail.vue'
 import { describeApplicationBaseInfo, describeProcessingAdvancedSettings } from './presentation'
 import {
   APPLICATION_STATUS_OPTIONS,

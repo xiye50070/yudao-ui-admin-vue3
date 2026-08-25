@@ -50,7 +50,12 @@ export const deleteSourceSystem = (id: number) =>
   request.delete({ url: `${management}/source-systems/${id}` })
 
 export const getDatasetPage = (
-  params: PageParam & { keyword?: string; sourceSystemId?: number; subjectDomainId?: number }
+  params: PageParam & {
+    keyword?: string
+    sourceSystemId?: number
+    subjectDomainId?: number
+    publishStatus?: number
+  }
 ) => request.get<PageResult<DatasetVO>>({ url: `${management}/datasets`, params })
 export const getDataset = (id: number) =>
   request.get<DatasetVO>({ url: `${management}/datasets/${id}` })

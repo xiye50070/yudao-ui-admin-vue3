@@ -213,24 +213,61 @@ export interface ApplicationManagementPageReq extends PageParam {
   updateTimeSort?: 'ASC' | 'DESC'
 }
 
+export interface ApplicationDatasetDetailVO {
+  applicationDatasetId: number
+  datasetId: number
+  datasetSnapshot: Record<string, unknown> & {
+    businessName?: string
+    datasetCode?: string
+  }
+  fields: Array<{
+    fieldId: number
+    fieldCode: string
+    fieldName: string
+    dataType?: string
+    sensitivityLevel: number
+    returnSelected: boolean
+    querySelected: boolean
+    queryCapabilities?: string[]
+  }>
+}
+
+export interface ApplicationResourceComponentVO {
+  masterComponentId: number
+  componentKey: string
+  applicationDatasetId: number
+  componentSnapshot: Record<string, unknown> & {
+    displayName?: string
+    levelCode?: 'M1' | 'M2'
+    componentCategory?: 'CORE' | 'RELATION' | 'HISTORY'
+  }
+  requestedFieldIds: number[]
+  automaticFieldIds: number[]
+  displayOrder: number
+}
+
+export interface ApplicationResourceGroupVO {
+  id: number
+  resourceType: 'DATASET' | 'MASTER_OBJECT'
+  resourceId: number
+  resourceVersionNo?: number | null
+  resourceSnapshot: Record<string, unknown> & {
+    businessName?: string
+    datasetCode?: string
+    objectName?: string
+    objectCode?: string
+    versionNo?: number
+  }
+  displayOrder: number
+  components: ApplicationResourceComponentVO[]
+}
+
 export interface ApplicationDetailVO extends ApplicationSummaryVO {
   lockVersion: number
   baseInfo: ApplicationBaseInfo
-  datasets: Array<{
-    applicationDatasetId: number
-    datasetId: number
-    datasetSnapshot: { businessName?: string; datasetCode?: string }
-    fields: Array<{
-      fieldId: number
-      fieldCode: string
-      fieldName: string
-      dataType?: string
-      sensitivityLevel: number
-      returnSelected: boolean
-      querySelected: boolean
-      queryCapabilities?: string[]
-    }>
-  }>
+  datasets: ApplicationDatasetDetailVO[]
+  /** Optional for applications created before resource provenance snapshots were introduced. */
+  resourceGroups?: ApplicationResourceGroupVO[]
   cleaningRules: Array<{
     datasetId: number
     fieldId: number
