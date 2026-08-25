@@ -17,6 +17,7 @@ describe('data-market catalog editor contracts', () => {
       fieldCode: '',
       fieldName: '',
       dataType: 'varchar',
+      logicalTypeId: undefined,
       businessDescription: '',
       nullable: true,
       primaryKey: false,
@@ -46,6 +47,27 @@ describe('data-market catalog editor contracts', () => {
 
     expect(toDatasetFieldSaveReq(field)).not.toHaveProperty('datasetId')
     expect(toDatasetFieldSaveReq(field)).not.toHaveProperty('standard')
+  })
+
+  it('sends the selected logical type but strips response-only matching details', () => {
+    const field = {
+      ...createEmptyDatasetField(42),
+      id: 8,
+      logicalTypeId: 201,
+      logicalTypeCode: 'TEXT',
+      logicalTypeName: '文本',
+      logicalTypeStatus: 0,
+      logicalTypeMatchStatus: 'ASSIGNED' as const,
+      logicalTypeCandidates: [{ id: 201, code: 'TEXT', name: '文本' }]
+    }
+
+    const request = toDatasetFieldSaveReq(field)
+    expect(request.logicalTypeId).toBe(201)
+    expect(request).not.toHaveProperty('logicalTypeCode')
+    expect(request).not.toHaveProperty('logicalTypeName')
+    expect(request).not.toHaveProperty('logicalTypeStatus')
+    expect(request).not.toHaveProperty('logicalTypeMatchStatus')
+    expect(request).not.toHaveProperty('logicalTypeCandidates')
   })
 
   it('creates and validates all three typed standard drafts', () => {

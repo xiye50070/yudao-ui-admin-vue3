@@ -124,9 +124,9 @@
     :dataset-id="standardDatasetId"
     :dataset-name="standardDatasetName"
   />
-  <Dialog v-model="fieldVisible" title="字段编辑" width="min(1280px, 96vw)"
+  <Dialog v-model="fieldVisible" title="字段编辑" width="min(1480px, 96vw)"
     ><el-alert
-      title="物理字段名对应来源数据表的列名（例如 EMPLOYEE_ID），并非系统主键 ID；可返回、可查询由申请人按申请单选择。"
+      title="物理字段名对应来源数据表的列名，并非系统主键 ID；实际类型保留数据库返回值，逻辑类型请从后台配置中选择。草稿允许暂不选择，发布前必须补齐。"
       type="info"
       :closable="false"
       class="mb-12px"
@@ -140,9 +140,47 @@
         ><template #default="{ row }"
           ><el-input v-model="row.fieldName" placeholder="例如 员工编号" /></template
       ></el-table-column>
-      ><el-table-column label="类型"
+      ><el-table-column label="实际类型" min-width="170"
         ><template #default="{ row }"
-          ><el-input v-model="row.dataType" /></template></el-table-column
+          ><el-input
+            v-model="row.dataType"
+            :aria-label="`${fieldDisplayName(row)}实际类型`"
+            placeholder="例如 VARCHAR2(100)"
+            @change="onActualTypeChange(row)" /></template></el-table-column
+      ><el-table-column label="逻辑类型" min-width="230"
+        ><template #default="{ row }"
+          ><div class="logical-type-cell"
+            ><el-select
+              v-model="row.logicalTypeId"
+              :aria-label="`${fieldDisplayName(row)}逻辑类型`"
+              :loading="logicalTypeLoading"
+              clearable
+              filterable
+              placeholder="请选择已配置类型"
+              @change="(value) => onLogicalTypeChange(row, value)"
+              ><el-option
+                v-for="option in logicalTypeOptionsFor(row)"
+                :key="option.id"
+                :label="logicalTypeLabel(option)"
+                :value="option.id"
+                :disabled="option.status !== 0" /></el-select
+            ><div class="logical-type-status"
+              ><el-tag
+                v-if="row.logicalTypeMatchStatus"
+                size="small"
+                effect="plain"
+                :type="logicalTypeStatusTag(row)"
+                >{{ logicalTypeStatusText(row) }}</el-tag
+              ><el-button
+                link
+                type="primary"
+                :loading="fieldTypePreviewing"
+                @click="rematchField(row)"
+                >重新匹配</el-button
+              ></div
+            ></div
+          ></template
+        ></el-table-column
       ><el-table-column label="敏感级"
         ><template #default="{ row }"
           ><el-input-number
@@ -243,6 +281,11 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import * as CatalogApi from '@/api/dataMarket/catalog'
+import * as PreprocessingApi from '@/api/dataMarket/preprocessing'
+import type {
+  FieldTypeMatchPreviewVO,
+  LogicalFieldTypeSimpleVO
+} from '@/api/dataMarket/preprocessing'
 import type {
   DatasetAclRule,
   DatasetFieldVO,
@@ -282,6 +325,9 @@ const currentId = ref<number>()
 const standardDatasetId = ref<number>()
 const standardDatasetName = ref('')
 const fields = ref<DatasetFieldVO[]>([])
+const logicalTypeOptions = ref<LogicalFieldTypeSimpleVO[]>([])
+const logicalTypeLoading = ref(false)
+const fieldTypePreviewing = ref(false)
 const aclRules = ref<DatasetAclRule[]>([])
 const aclDatasetId = ref<number>()
 const publishingId = ref<number>()
@@ -431,8 +477,133 @@ const save = async () => {
 }
 const openFields = async (row: DatasetVO) => {
   currentId.value = row.id
-  fields.value = row.id ? await CatalogApi.getDatasetFields(row.id) : []
+  if (!row.id) {
+    fields.value = []
+    return
+  }
+  logicalTypeLoading.value = true
+  try {
+    const [datasetFields, typeOptions] = await Promise.all([
+      CatalogApi.getDatasetFields(row.id),
+      PreprocessingApi.getEnabledLogicalFieldTypes()
+    ])
+    fields.value = datasetFields
+    logicalTypeOptions.value = typeOptions
+  } catch {
+    fields.value = []
+    logicalTypeOptions.value = []
+    message.error('字段或逻辑类型配置加载失败，请稍后重试')
+  } finally {
+    logicalTypeLoading.value = false
+  }
   fieldVisible.value = true
+}
+
+type LogicalTypeDisplayOption = LogicalFieldTypeSimpleVO & { historical?: boolean }
+
+const fieldDisplayName = (field: DatasetFieldVO) =>
+  field.fieldName || field.fieldCode || '未命名字段'
+
+const logicalTypeOptionsFor = (field: DatasetFieldVO): LogicalTypeDisplayOption[] => {
+  const options: LogicalTypeDisplayOption[] = logicalTypeOptions.value.map((item) => ({ ...item }))
+  if (field.logicalTypeId && !options.some((item) => item.id === field.logicalTypeId)) {
+    options.push({
+      id: field.logicalTypeId,
+      code: field.logicalTypeCode || '',
+      name: field.logicalTypeName || '已停用或不可见类型',
+      sort: Number.MAX_SAFE_INTEGER,
+      status: field.logicalTypeStatus ?? 1,
+      historical: true
+    })
+  }
+  return options
+}
+
+const logicalTypeLabel = (option: LogicalTypeDisplayOption) => {
+  const code = option.code ? `（${option.code}）` : ''
+  return `${option.name}${code}${option.status === 0 ? '' : ' · 已停用'}`
+}
+
+const onLogicalTypeChange = (field: DatasetFieldVO, value?: number | string) => {
+  const logicalTypeId = value === '' || value === undefined ? undefined : Number(value)
+  field.logicalTypeId = logicalTypeId
+  if (!logicalTypeId) {
+    field.logicalTypeCode = undefined
+    field.logicalTypeName = undefined
+    field.logicalTypeStatus = undefined
+    field.logicalTypeMatchStatus = 'UNMATCHED'
+    field.logicalTypeCandidates = []
+    return
+  }
+  const selected = logicalTypeOptionsFor(field).find((option) => option.id === logicalTypeId)
+  if (!selected) return
+  field.logicalTypeCode = selected.code
+  field.logicalTypeName = selected.name
+  field.logicalTypeStatus = selected.status
+  field.logicalTypeMatchStatus = 'ASSIGNED'
+  field.logicalTypeCandidates = [{ id: selected.id, code: selected.code, name: selected.name }]
+}
+
+const applyMatchResult = (field: DatasetFieldVO, result: FieldTypeMatchPreviewVO) => {
+  field.logicalTypeMatchStatus = result.status
+  field.logicalTypeCandidates = result.candidates.map((candidate) => ({
+    id: candidate.id,
+    code: candidate.code,
+    name: candidate.name
+  }))
+  if (result.status === 'MATCHED' && result.logicalType) {
+    field.logicalTypeId = result.logicalType.id
+    field.logicalTypeCode = result.logicalType.code
+    field.logicalTypeName = result.logicalType.name
+    field.logicalTypeStatus = result.logicalType.status
+    return
+  }
+  field.logicalTypeId = undefined
+  field.logicalTypeCode = undefined
+  field.logicalTypeName = undefined
+  field.logicalTypeStatus = undefined
+}
+
+const previewField = async (field: DatasetFieldVO, force: boolean) => {
+  if (!force && field.logicalTypeId) return
+  const actualType = field.dataType?.trim()
+  if (!actualType) return
+  fieldTypePreviewing.value = true
+  try {
+    applyMatchResult(field, await PreprocessingApi.previewFieldType(actualType))
+  } catch {
+    message.error('字段类型匹配失败，请稍后重试')
+  } finally {
+    fieldTypePreviewing.value = false
+  }
+}
+
+const onActualTypeChange = (field: DatasetFieldVO) => previewField(field, false)
+const rematchField = (field: DatasetFieldVO) => previewField(field, true)
+
+const logicalTypeStatusText = (field: DatasetFieldVO) => {
+  switch (field.logicalTypeMatchStatus) {
+    case 'ASSIGNED':
+      return '已选择'
+    case 'MATCHED':
+      return '已自动匹配'
+    case 'CONFLICT':
+      return field.logicalTypeCandidates?.length
+        ? `匹配冲突：${field.logicalTypeCandidates.map((item) => item.name).join('、')}`
+        : '匹配冲突'
+    case 'INVALID':
+      return '原配置已失效'
+    default:
+      return '未匹配'
+  }
+}
+
+const logicalTypeStatusTag = (field: DatasetFieldVO) => {
+  if (field.logicalTypeMatchStatus === 'ASSIGNED' || field.logicalTypeMatchStatus === 'MATCHED')
+    return 'success'
+  if (field.logicalTypeMatchStatus === 'CONFLICT') return 'warning'
+  if (field.logicalTypeMatchStatus === 'INVALID') return 'danger'
+  return 'info'
 }
 const openStandards = (row: DatasetVO) => {
   if (!row.id) return message.warning('请先保存数据集')
@@ -505,3 +676,22 @@ onMounted(() => {
   searchSourceSystems()
 })
 </script>
+<style scoped>
+.logical-type-cell {
+  display: grid;
+  gap: 6px;
+}
+
+.logical-type-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.logical-type-status :deep(.el-tag) {
+  max-width: 165px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+</style>

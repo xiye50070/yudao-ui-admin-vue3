@@ -6,6 +6,7 @@ export const createEmptyDatasetField = (datasetId: number, displayOrder = 1): Da
   fieldCode: '',
   fieldName: '',
   dataType: 'varchar',
+  logicalTypeId: undefined,
   businessDescription: '',
   nullable: true,
   primaryKey: false,
@@ -19,5 +20,10 @@ export const createEmptyDatasetField = (datasetId: number, displayOrder = 1): Da
 export const toDatasetFieldSaveReq = ({
   datasetId: _datasetId,
   standard: _standard,
+  logicalTypeCode: _logicalTypeCode,
+  logicalTypeName: _logicalTypeName,
+  logicalTypeStatus: _logicalTypeStatus,
+  logicalTypeMatchStatus: _logicalTypeMatchStatus,
+  logicalTypeCandidates: _logicalTypeCandidates,
   ...field
 }: DatasetFieldVO): DatasetFieldSaveReq => field

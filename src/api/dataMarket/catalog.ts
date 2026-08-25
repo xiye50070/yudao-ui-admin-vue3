@@ -61,7 +61,16 @@ export const updateDataset = (id: number, data: DatasetVO) =>
 export const deleteDataset = (id: number) => request.delete({ url: `${management}/datasets/${id}` })
 export const getDatasetFields = (id: number) =>
   request.get<DatasetFieldVO[]>({ url: `${management}/datasets/${id}/fields` })
-export type DatasetFieldSaveReq = Omit<DatasetFieldVO, 'datasetId' | 'standard'>
+export type DatasetFieldSaveReq = Omit<
+  DatasetFieldVO,
+  | 'datasetId'
+  | 'standard'
+  | 'logicalTypeCode'
+  | 'logicalTypeName'
+  | 'logicalTypeStatus'
+  | 'logicalTypeMatchStatus'
+  | 'logicalTypeCandidates'
+>
 export const updateDatasetFields = (id: number, fields: DatasetFieldSaveReq[]) =>
   request.put({ url: `${management}/datasets/${id}/fields`, data: { fields } })
 
