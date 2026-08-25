@@ -525,16 +525,16 @@ onMounted(() => {
 .editor-section p,
 .preview-panel p {
   margin: 4px 0 0;
-  color: var(--el-text-color-secondary);
   font-size: 12px;
+  color: var(--el-text-color-secondary);
 }
 
 .editor-section {
-  margin-bottom: 16px;
   padding: 16px 18px 4px;
+  margin-bottom: 16px;
+  background: var(--el-bg-color);
   border: 1px solid var(--el-border-color-lighter);
   border-radius: 8px;
-  background: var(--el-bg-color);
 }
 
 .section-heading,
@@ -549,8 +549,8 @@ onMounted(() => {
 .section-heading h3,
 .preview-panel h3 {
   margin: 0;
-  color: var(--el-text-color-primary);
   font-size: 15px;
+  color: var(--el-text-color-primary);
 }
 
 .base-grid {
@@ -571,9 +571,9 @@ onMounted(() => {
 
 .matcher-card {
   padding: 12px 14px 2px;
+  background: var(--el-fill-color-lighter);
   border: 1px solid var(--el-border-color-lighter);
   border-radius: 7px;
-  background: var(--el-fill-color-lighter);
 }
 
 .matcher-title {
@@ -592,21 +592,21 @@ onMounted(() => {
 }
 
 .empty-state {
-  margin-bottom: 14px;
   padding: 18px;
-  border: 1px dashed var(--el-border-color);
-  border-radius: 7px;
+  margin-bottom: 14px;
   color: var(--el-text-color-secondary);
   text-align: center;
+  border: 1px dashed var(--el-border-color);
+  border-radius: 7px;
 }
 
 .preview-panel {
   display: grid;
+  padding: 16px 18px;
+  background: var(--el-fill-color-light);
+  border-radius: 8px;
   grid-template-columns: minmax(240px, 0.8fr) minmax(360px, 1.2fr);
   gap: 14px 24px;
-  padding: 16px 18px;
-  border-radius: 8px;
-  background: var(--el-fill-color-light);
 }
 
 .preview-action {
@@ -617,10 +617,10 @@ onMounted(() => {
 }
 
 .preview-result {
-  grid-column: 1 / -1;
   padding: 10px 12px;
-  border-radius: 6px;
   font-weight: 500;
+  border-radius: 6px;
+  grid-column: 1 / -1;
 }
 
 .preview-result.is-matched {
@@ -638,7 +638,7 @@ onMounted(() => {
   background: var(--el-color-warning-light-9);
 }
 
-@media (max-width: 900px) {
+@media (width <= 900px) {
   .base-grid,
   .matcher-grid,
   .preview-panel {

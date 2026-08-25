@@ -100,7 +100,7 @@
           aria-label="参数结构 JSON"
           type="textarea"
           :rows="5"
-          placeholder='例如 {"type":"object","properties":{}}'
+          :placeholder="parameterSchemaPlaceholder"
           @input="schemaError = ''"
         />
       </el-form-item>
@@ -143,6 +143,7 @@ import { useMessage } from '@/hooks/web/useMessage'
 defineOptions({ name: 'DataMarketPreprocessingRule' })
 
 const message = useMessage()
+const parameterSchemaPlaceholder = '例如 {"type":"object","properties":{}}'
 const loading = ref(false)
 const saving = ref(false)
 const list = ref<PreprocessingRuleVO[]>([])
@@ -249,8 +250,8 @@ onMounted(getList)
 
 <style scoped>
 .schema-alert {
-  margin: -4px 0 18px 120px;
   width: calc(100% - 120px);
+  margin: -4px 0 18px 120px;
 }
 
 .form-grid {
