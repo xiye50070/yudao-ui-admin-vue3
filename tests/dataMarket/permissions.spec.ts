@@ -36,4 +36,13 @@ describe('data-market management permission contracts', () => {
     expect(callerSystem).toContain('data-market:caller-system:delete')
     expect(callerSystem).not.toContain('data-market:source-system:')
   })
+
+  it('keeps indicator domains independent from dataset subject-domain permissions', () => {
+    const indicatorDomain = source('indicatorDomain/index.vue')
+
+    expect(indicatorDomain).toContain('data-market:indicator-domain:create')
+    expect(indicatorDomain).toContain('data-market:indicator-domain:update')
+    expect(indicatorDomain).toContain('data-market:indicator-domain:delete')
+    expect(indicatorDomain).not.toContain('data-market:domain:')
+  })
 })
