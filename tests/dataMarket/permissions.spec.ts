@@ -45,4 +45,15 @@ describe('data-market management permission contracts', () => {
     expect(indicatorDomain).toContain('data-market:indicator-domain:delete')
     expect(indicatorDomain).not.toContain('data-market:domain:')
   })
+
+  it('uses indicator mutation and shared access-policy permissions for indicator management', () => {
+    const indicator = source('indicator/index.vue')
+    const acl = source('indicator/IndicatorAclDialog.vue')
+
+    expect(indicator).toContain('data-market:indicator:create')
+    expect(indicator).toContain('data-market:indicator:update')
+    expect(indicator).toContain('data-market:indicator:delete')
+    expect(indicator).toContain('data-market:access-policy:query')
+    expect(acl).toContain('data-market:access-policy:update')
+  })
 })
