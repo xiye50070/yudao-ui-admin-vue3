@@ -1,6 +1,4 @@
 <template>
-  <doc-alert title="AI 绘图创作" url="https://doc.iocoder.cn/ai/image/" />
-
   <ContentWrap>
     <!-- 搜索工作栏 -->
     <el-form

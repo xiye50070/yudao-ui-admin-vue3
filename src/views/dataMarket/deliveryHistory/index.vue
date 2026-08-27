@@ -1,116 +1,192 @@
 <template>
-  <ContentWrap>
-    <el-alert
-      title="这里仅展示已完成 API 配置阶段的历史交付结果。配置内容只读，凭证只显示脱敏值。"
-      type="info"
-      :closable="false"
-      class="mb-16px"
-    />
-    <el-form :inline="true" :model="query">
-      <el-form-item label="关键词">
-        <el-input
-          v-model="query.keyword"
-          clearable
-          placeholder="API、申请单或交付单"
-          @keyup.enter="getList"
-        />
-      </el-form-item>
-      <el-form-item label="交付状态">
-        <el-select v-model="query.deliveryStatus" clearable placeholder="全部" class="!w-160px">
-          <el-option
-            v-for="status in deliveryStatuses"
-            :key="status"
-            :label="status"
-            :value="status"
-          />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="验收状态">
-        <el-select v-model="query.acceptanceStatus" clearable placeholder="全部" class="!w-160px">
-          <el-option
-            v-for="status in acceptanceStatuses"
-            :key="status"
-            :label="acceptanceStatusLabel(status)"
-            :value="status"
-          />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="配置完成时间">
-        <el-date-picker
-          v-model="query.completedAt"
-          type="datetimerange"
-          value-format="YYYY-MM-DD HH:mm:ss"
-          start-placeholder="开始时间"
-          end-placeholder="结束时间"
-        />
-      </el-form-item>
-      <el-form-item>
-        <el-button v-hasPermi="['data-market:delivery:query']" type="primary" @click="getList"
-          >查询</el-button
-        >
-        <el-button @click="resetQuery">重置</el-button>
-      </el-form-item>
-    </el-form>
-  </ContentWrap>
-
-  <ContentWrap>
-    <el-alert v-if="pageError" :title="pageError" type="error" :closable="false" class="mb-12px">
-      <template #default
-        ><el-button link type="primary" @click="getList">重新加载</el-button></template
+  <DataMarketManagementPage
+    page-key="delivery-history"
+    title="交付配置"
+    description="查询已交付 API 的配置、版本与验收记录"
+    icon="ep:box"
+    tone="teal"
+  >
+    <template #actions>
+      <el-tag class="read-only-tag" type="info" effect="plain" round
+        ><Icon icon="ep:view" />只读查询</el-tag
       >
-    </el-alert>
-    <el-table v-loading="loading" :data="list" empty-text="暂无已完成配置的 API">
-      <el-table-column prop="apiNo" label="API 编号" min-width="150" />
-      <el-table-column prop="apiName" label="API 名称" min-width="150" show-overflow-tooltip />
-      <el-table-column label="申请单" min-width="190">
-        <template #default="{ row }">
-          <div>{{ row.applicationNo }}</div>
-          <div class="secondary-text">{{ row.applicationName }}</div>
-        </template>
-      </el-table-column>
-      <el-table-column label="交付批次" min-width="170">
-        <template #default="{ row }">
-          <div>{{ row.deliveryNo }}</div>
-          <el-tag size="small" type="info">{{ row.deliveryStatus }}</el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column label="当前版本" min-width="180">
-        <template #default="{ row }">
-          <div>{{ row.versionNo || '—' }}</div>
-          <div class="secondary-text">{{ formatApiEndpoint(row.method, row.requestPath) }}</div>
-        </template>
-      </el-table-column>
-      <el-table-column label="验收状态" width="130">
-        <template #default="{ row }">
-          <el-tag :type="row.acceptanceStatus === 'ACCEPTED' ? 'success' : 'warning'">
-            {{ acceptanceStatusLabel(row.acceptanceStatus) }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column label="配置完成时间" min-width="180">
-        <template #default="{ row }">{{ formatTimestamp(row.apiConfigCompletedAt) }}</template>
-      </el-table-column>
-      <el-table-column label="操作" fixed="right" width="90">
-        <template #default="{ row }">
-          <el-button
-            v-hasPermi="['data-market:delivery:query']"
-            link
-            type="primary"
-            @click="openDetail(row.apiId)"
-            >查看</el-button
-          >
-        </template>
-      </el-table-column>
-    </el-table>
-    <Pagination
-      v-model:limit="query.pageSize"
-      v-model:page="query.pageNo"
-      :total="total"
-      @pagination="getList"
-    />
-  </ContentWrap>
+      <el-button :loading="loading" @click="getList"><Icon icon="ep:refresh" />刷新</el-button>
+    </template>
 
-  <Dialog v-model="detailVisible" title="API 历史配置详情" width="82%">
+    <template #summary>
+      <div class="dm-summary-item"
+        ><span class="dm-summary-item__icon"><Icon icon="ep:box" /></span
+        ><span class="dm-summary-item__content"
+          ><small>历史配置</small><strong>{{ total }}</strong></span
+        ></div
+      >
+      <div class="dm-summary-item"
+        ><span class="dm-summary-item__icon"><Icon icon="ep:circle-check" /></span
+        ><span class="dm-summary-item__content"
+          ><small>本页已验收</small><strong>{{ currentAcceptedCount }}</strong></span
+        ></div
+      >
+      <div class="dm-summary-item"
+        ><span class="dm-summary-item__icon"><Icon icon="ep:warning" /></span
+        ><span class="dm-summary-item__content"
+          ><small>本页整改中</small><strong>{{ currentRectifyingCount }}</strong></span
+        ></div
+      >
+    </template>
+
+    <section class="dm-panel delivery-filter-panel">
+      <header class="dm-panel__header"
+        ><div
+          ><h2>筛选交付记录</h2><p>支持按 API、申请单、交付单、状态和完成时间查询</p></div
+        ></header
+      >
+      <el-form :inline="true" :model="query" class="delivery-filter-form">
+        <el-form-item label="关键词"
+          ><el-input
+            v-model="query.keyword"
+            clearable
+            placeholder="API、申请单或交付单"
+            @keyup.enter="handleQuery"
+            ><template #prefix><Icon icon="ep:search" /></template></el-input
+        ></el-form-item>
+        <el-form-item label="交付状态"
+          ><el-select v-model="query.deliveryStatus" clearable placeholder="全部"
+            ><el-option
+              v-for="status in deliveryStatuses"
+              :key="status"
+              :label="deliveryStatusLabel(status)"
+              :value="status" /></el-select
+        ></el-form-item>
+        <el-form-item label="验收状态"
+          ><el-select v-model="query.acceptanceStatus" clearable placeholder="全部"
+            ><el-option
+              v-for="status in acceptanceStatuses"
+              :key="status"
+              :label="acceptanceStatusLabel(status)"
+              :value="status" /></el-select
+        ></el-form-item>
+        <el-form-item label="配置完成时间"
+          ><el-date-picker
+            v-model="query.completedAt"
+            type="datetimerange"
+            value-format="YYYY-MM-DD HH:mm:ss"
+            start-placeholder="开始时间"
+            end-placeholder="结束时间"
+        /></el-form-item>
+        <el-form-item
+          ><el-button
+            v-hasPermi="['data-market:delivery:query']"
+            type="primary"
+            @click="handleQuery"
+            >查询</el-button
+          ><el-button @click="resetQuery">重置</el-button></el-form-item
+        >
+      </el-form>
+    </section>
+
+    <section class="dm-panel">
+      <header class="dm-panel__header"
+        ><div
+          ><h2>API 交付历史</h2><p v-if="!pageError">共 {{ total }} 条历史配置</p
+          ><p v-else>交付历史暂不可用</p></div
+        ><el-tooltip content="配置内容只读，凭证仅显示脱敏值" placement="left"
+          ><Icon class="delivery-security-icon" icon="ep:lock" /></el-tooltip
+      ></header>
+      <el-result
+        v-if="pageError"
+        class="dm-load-result"
+        icon="warning"
+        title="交付历史加载失败"
+        :sub-title="pageError"
+        ><template #extra
+          ><el-button type="primary" @click="getList">重新加载</el-button></template
+        ></el-result
+      >
+      <template v-else>
+        <div class="dm-table-wrap">
+          <el-table
+            v-loading="loading"
+            :data="list"
+            empty-text="暂无已完成配置的 API"
+            table-layout="fixed"
+          >
+            <el-table-column label="API" min-width="240"
+              ><template #default="{ row }"
+                ><div class="dm-entity-cell"
+                  ><span class="dm-entity-mark">API</span
+                  ><span class="dm-entity-copy"
+                    ><strong>{{ row.apiName }}</strong
+                    ><small>{{ row.apiNo }}</small></span
+                  ></div
+                ></template
+              ></el-table-column
+            >
+            <el-table-column label="申请单" min-width="190"
+              ><template #default="{ row }"
+                ><div>{{ row.applicationNo }}</div
+                ><div class="dm-secondary">{{ row.applicationName }}</div></template
+              ></el-table-column
+            >
+            <el-table-column label="交付批次" min-width="175"
+              ><template #default="{ row }"
+                ><div class="dm-code">{{ row.deliveryNo }}</div
+                ><div class="dm-secondary">{{
+                  deliveryStatusLabel(row.deliveryStatus)
+                }}</div></template
+              ></el-table-column
+            >
+            <el-table-column label="当前版本" min-width="190"
+              ><template #default="{ row }"
+                ><div>{{ row.versionNo || '—' }}</div
+                ><div class="dm-secondary endpoint-text">{{
+                  formatApiEndpoint(row.method, row.requestPath)
+                }}</div></template
+              ></el-table-column
+            >
+            <el-table-column label="验收状态" width="130" align="center"
+              ><template #default="{ row }"
+                ><el-tag
+                  :type="row.acceptanceStatus === 'ACCEPTED' ? 'success' : 'warning'"
+                  effect="light"
+                  round
+                  >{{ acceptanceStatusLabel(row.acceptanceStatus) }}</el-tag
+                ></template
+              ></el-table-column
+            >
+            <el-table-column label="配置完成时间" min-width="180"
+              ><template #default="{ row }">{{
+                formatTimestamp(row.apiConfigCompletedAt)
+              }}</template></el-table-column
+            >
+            <el-table-column label="操作" width="100" align="right"
+              ><template #default="{ row }"
+                ><el-button
+                  v-hasPermi="['data-market:delivery:query']"
+                  link
+                  type="primary"
+                  @click="openDetail(row.apiId)"
+                  >查看详情</el-button
+                ></template
+              ></el-table-column
+            >
+          </el-table>
+        </div>
+        <Pagination
+          v-model:limit="query.pageSize"
+          v-model:page="query.pageNo"
+          :total="total"
+          @pagination="getList"
+        />
+      </template>
+    </section>
+  </DataMarketManagementPage>
+
+  <Dialog
+    v-model="detailVisible"
+    title="API 历史配置详情"
+    width="min(1180px, calc(100vw - 32px))"
+    align-center
+  >
     <div v-loading="detailLoading" class="detail-body">
       <el-alert
         v-if="detailError"
@@ -240,6 +316,7 @@ import {
   formatTimestamp,
   prettyJson
 } from './presentation'
+import DataMarketManagementPage from '@/views/dataMarket/components/DataMarketManagementPage.vue'
 
 defineOptions({ name: 'DataMarketDeliveryHistory' })
 
@@ -267,6 +344,21 @@ const currentVersion = computed(() => {
     ) || detail.value.api.versions[0]
   )
 })
+const currentAcceptedCount = computed(
+  () => list.value.filter((item) => item.acceptanceStatus === 'ACCEPTED').length
+)
+const currentRectifyingCount = computed(
+  () => list.value.filter((item) => item.acceptanceStatus === 'RECTIFYING').length
+)
+const deliveryStatusLabels: Record<string, string> = {
+  CREATED: '已创建',
+  CONFIGURING: '配置中',
+  PENDING_ACCEPTANCE: '待验收',
+  RECTIFYING: '整改中',
+  DELIVERED: '已交付'
+}
+const deliveryStatusLabel = (status?: string) =>
+  status ? deliveryStatusLabels[status] || status : '—'
 
 const getList = async () => {
   loading.value = true
@@ -282,6 +374,10 @@ const getList = async () => {
   } finally {
     loading.value = false
   }
+}
+const handleQuery = () => {
+  query.pageNo = 1
+  void getList()
 }
 const resetQuery = () => {
   Object.assign(query, {
@@ -311,11 +407,41 @@ const openDetail = async (apiId: number) => {
 onMounted(getList)
 </script>
 
-<style scoped>
-.secondary-text {
-  margin-top: 4px;
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
+<style scoped lang="scss">
+.read-only-tag {
+  min-height: 32px;
+  padding-inline: 12px;
+
+  :deep(.el-tag__content) {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+}
+
+.delivery-filter-panel {
+  padding-bottom: 8px !important;
+}
+
+.delivery-filter-form :deep(.el-form-item) {
+  margin-bottom: 14px;
+}
+
+.delivery-filter-form :deep(.el-input) {
+  width: 220px;
+}
+
+.delivery-filter-form :deep(.el-select) {
+  width: 155px;
+}
+
+.delivery-security-icon {
+  font-size: 20px;
+  color: #0d9488;
+}
+
+.endpoint-text {
+  font-family: SFMono-Regular, Consolas, monospace;
 }
 
 .detail-body {

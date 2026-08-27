@@ -4,142 +4,104 @@
     ref="formLogin"
     :model="loginData.loginForm"
     :rules="LoginRules"
-    class="login-form"
+    class="login-form login-account-form"
     label-position="top"
-    label-width="120px"
     size="large"
   >
-    <el-row class="mx-[-10px]">
-      <el-col :span="24" class="px-10px">
-        <el-form-item>
-          <LoginFormTitle class="w-full" />
-        </el-form-item>
-      </el-col>
-      <el-col :span="24" class="px-10px">
-        <el-form-item v-if="loginData.tenantEnable === 'true'" prop="tenantName">
-          <el-input
-            v-model="loginData.loginForm.tenantName"
-            :placeholder="t('login.tenantNamePlaceholder')"
-            :prefix-icon="iconHouse"
-            link
-            type="primary"
-          />
-        </el-form-item>
-      </el-col>
-      <el-col :span="24" class="px-10px">
-        <el-form-item prop="username">
-          <el-input
-            v-model="loginData.loginForm.username"
-            :placeholder="t('login.usernamePlaceholder')"
-            :prefix-icon="iconAvatar"
-          />
-        </el-form-item>
-      </el-col>
-      <el-col :span="24" class="px-10px">
-        <el-form-item prop="password">
-          <el-input
-            v-model="loginData.loginForm.password"
-            :placeholder="t('login.passwordPlaceholder')"
-            :prefix-icon="iconLock"
-            show-password
-            type="password"
-            @keyup.enter="getCode()"
-          />
-        </el-form-item>
-      </el-col>
-      <el-col :span="24" class="px-10px mt-[-20px] mb-[-20px]">
-        <el-form-item>
-          <el-row justify="space-between" style="width: 100%">
-            <el-col :span="6">
-              <el-checkbox v-model="loginData.loginForm.rememberMe">
-                {{ t('login.remember') }}
-              </el-checkbox>
-            </el-col>
-            <el-col :offset="6" :span="12">
-              <el-link
-                class="float-right"
-                type="primary"
-                @click="setLoginState(LoginStateEnum.RESET_PASSWORD)"
-              >
-                {{ t('login.forgetPassword') }}
-              </el-link>
-            </el-col>
-          </el-row>
-        </el-form-item>
-      </el-col>
-      <el-col :span="24" class="px-10px">
-        <el-form-item>
-          <el-button :loading="loginLoading" class="w-full" type="primary" @click="getCode()">
-            {{ t('login.login') }}
-          </el-button>
-        </el-form-item>
-      </el-col>
-      <Verify
-        v-if="loginData.captchaEnable === 'true'"
-        ref="verify"
-        :captchaType="captchaType"
-        :imgSize="{ width: '400px', height: '200px' }"
-        mode="pop"
-        @success="handleLogin"
+    <div class="login-form-heading">
+      <span class="login-form-badge" aria-hidden="true">
+        <Icon icon="ep:right" :size="23" />
+      </span>
+      <h1>{{ t('login.accountWelcome') }}</h1>
+      <p>{{ t('login.accountSubtitle') }}</p>
+    </div>
+
+    <el-form-item
+      v-if="loginData.tenantEnable === 'true'"
+      :label="t('login.tenantname')"
+      prop="tenantName"
+    >
+      <el-select
+        v-model="loginData.loginForm.tenantName"
+        :loading="tenantLoading"
+        :placeholder="t('login.tenantSelectPlaceholder')"
+        allow-create
+        autocomplete="organization"
+        clearable
+        default-first-option
+        filterable
+      >
+        <template #prefix>
+          <Icon icon="ep:house" />
+        </template>
+        <el-option
+          v-for="tenant in tenantOptions"
+          :key="tenant.id"
+          :label="tenant.name"
+          :value="tenant.name"
+        />
+      </el-select>
+    </el-form-item>
+
+    <el-form-item :label="t('login.username')" prop="username">
+      <el-input
+        v-model="loginData.loginForm.username"
+        :placeholder="t('login.usernamePlaceholder')"
+        :prefix-icon="iconAvatar"
+        autocomplete="username"
       />
-      <el-col :span="24" class="px-10px">
-        <el-form-item>
-          <el-row :gutter="5" justify="space-between" style="width: 100%">
-            <el-col :span="8">
-              <el-button class="w-full" @click="setLoginState(LoginStateEnum.MOBILE)">
-                {{ t('login.btnMobile') }}
-              </el-button>
-            </el-col>
-            <el-col :span="8">
-              <el-button class="w-full" @click="setLoginState(LoginStateEnum.QR_CODE)">
-                {{ t('login.btnQRCode') }}
-              </el-button>
-            </el-col>
-            <el-col :span="8">
-              <el-button class="w-full" @click="setLoginState(LoginStateEnum.REGISTER)">
-                {{ t('login.btnRegister') }}
-              </el-button>
-            </el-col>
-          </el-row>
-        </el-form-item>
-      </el-col>
-      <el-divider content-position="center">{{ t('login.otherLogin') }}</el-divider>
-      <el-col :span="24" class="px-10px">
-        <el-form-item>
-          <div class="w-full flex justify-between">
-            <Icon
-              v-for="(item, key) in socialList"
-              :key="key"
-              :icon="item.icon"
-              :size="30"
-              class="anticon cursor-pointer"
-              color="#999"
-              @click="doSocialLogin(item.type)"
-            />
-          </div>
-        </el-form-item>
-      </el-col>
-      <el-divider content-position="center">萌新必读</el-divider>
-      <el-col :span="24" class="px-10px">
-        <el-form-item>
-          <div class="w-full flex justify-between">
-            <el-link href="https://doc.iocoder.cn/" target="_blank">📚开发指南</el-link>
-            <el-link href="https://doc.iocoder.cn/video/" target="_blank">🔥视频教程</el-link>
-            <el-link href="https://www.iocoder.cn/Interview/good-collection/" target="_blank">
-              ⚡面试手册
-            </el-link>
-            <el-link href="http://static.yudao.iocoder.cn/mp/Aix9975.jpeg" target="_blank">
-              🤝外包咨询
-            </el-link>
-          </div>
-        </el-form-item>
-      </el-col>
-    </el-row>
+    </el-form-item>
+
+    <el-form-item :label="t('login.password')" prop="password">
+      <el-input
+        v-model="loginData.loginForm.password"
+        :placeholder="t('login.passwordPlaceholder')"
+        :prefix-icon="iconLock"
+        autocomplete="current-password"
+        show-password
+        type="password"
+        @keyup.enter="getCode()"
+      />
+    </el-form-item>
+
+    <div class="login-options">
+      <el-checkbox v-model="loginData.loginForm.rememberMe">
+        {{ t('login.remember') }}
+      </el-checkbox>
+      <el-link type="primary" @click="setLoginState(LoginStateEnum.RESET_PASSWORD)">
+        {{ t('login.forgetPassword') }}
+      </el-link>
+    </div>
+
+    <el-button :loading="loginLoading" class="login-submit" type="primary" @click="getCode()">
+      {{ t('login.login') }}
+    </el-button>
+
+    <Verify
+      v-if="loginData.captchaEnable === 'true'"
+      ref="verify"
+      :captchaType="captchaType"
+      :imgSize="{ width: '400px', height: '200px' }"
+      mode="pop"
+      @success="handleLogin"
+    />
+
+    <div class="login-secondary-actions">
+      <el-button @click="setLoginState(LoginStateEnum.MOBILE)">
+        {{ t('login.btnMobile') }}
+      </el-button>
+      <el-button @click="setLoginState(LoginStateEnum.QR_CODE)">
+        {{ t('login.btnQRCode') }}
+      </el-button>
+      <el-button @click="setLoginState(LoginStateEnum.REGISTER)">
+        {{ t('login.btnRegister') }}
+      </el-button>
+    </div>
   </el-form>
 </template>
+
 <script lang="ts" setup>
 import { ElLoading } from 'element-plus'
-import LoginFormTitle from './LoginFormTitle.vue'
 import type { RouteLocationNormalizedLoaded } from 'vue-router'
 
 import { useIcon } from '@/hooks/web/useIcon'
@@ -147,13 +109,12 @@ import { useIcon } from '@/hooks/web/useIcon'
 import * as authUtil from '@/utils/auth'
 import { usePermissionStore } from '@/store/modules/permission'
 import * as LoginApi from '@/api/login'
+import * as TenantApi from '@/api/system/tenant'
 import { LoginStateEnum, useFormValid, useLoginState } from './useLogin'
 
 defineOptions({ name: 'LoginForm' })
 
 const { t } = useI18n()
-const message = useMessage()
-const iconHouse = useIcon({ icon: 'ep:house' })
 const iconAvatar = useIcon({ icon: 'ep:avatar' })
 const iconLock = useIcon({ icon: 'ep:lock' })
 const formLogin = ref()
@@ -165,6 +126,14 @@ const redirect = ref<string>('')
 const loginLoading = ref(false)
 const verify = ref()
 const captchaType = ref('blockPuzzle') // blockPuzzle 滑块 clickWord 点击文字 pictureWord 文字验证码
+
+interface TenantOption {
+  id: number
+  name: string
+}
+
+const tenantOptions = ref<TenantOption[]>([])
+const tenantLoading = ref(false)
 
 const getShow = computed(() => unref(getLoginState) === LoginStateEnum.LOGIN)
 
@@ -186,13 +155,6 @@ const loginData = reactive({
   }
 })
 
-const socialList = [
-  { icon: 'ant-design:wechat-filled', type: 30 },
-  { icon: 'ant-design:dingtalk-circle-filled', type: 20 },
-  { icon: 'ant-design:github-filled', type: 0 },
-  { icon: 'ant-design:alipay-circle-filled', type: 0 }
-]
-
 // 获取验证码
 const getCode = async () => {
   // 情况一，未开启：则直接登录
@@ -200,7 +162,6 @@ const getCode = async () => {
     await handleLogin({})
   } else {
     // 情况二，已开启：则展示验证码；只有完成验证码的情况，才进行登录
-    // 弹出验证码
     verify.value.show()
   }
 }
@@ -233,6 +194,21 @@ const getTenantByWebsite = async () => {
       loginData.loginForm.tenantName = res.name
       authUtil.setTenantId(res.id)
     }
+  }
+}
+
+// 获取可选租户；接口异常时仍可手动输入租户名称，避免阻断登录
+const getTenantList = async () => {
+  if (loginData.tenantEnable !== 'true') {
+    return
+  }
+  tenantLoading.value = true
+  try {
+    tenantOptions.value = await TenantApi.getTenantList()
+  } catch {
+    tenantOptions.value = []
+  } finally {
+    tenantLoading.value = false
   }
 }
 const loading = ref() // ElLoading.service 返回的实例
@@ -273,45 +249,10 @@ const handleLogin = async (params: any) => {
     }
   } finally {
     loginLoading.value = false
-    loading.value.close()
+    loading.value?.close()
   }
 }
 
-// 社交登录
-const doSocialLogin = async (type: number) => {
-  if (type === 0) {
-    message.error('此方式未配置')
-  } else {
-    loginLoading.value = true
-    if (loginData.tenantEnable === 'true') {
-      // 尝试先通过 tenantName 获取租户
-      await getTenantId()
-      // 如果获取不到，则需要弹出提示，进行处理
-      if (!authUtil.getTenantId()) {
-        try {
-          const data = await message.prompt('请输入租户名称', t('common.reminder'))
-          if (data?.action !== 'confirm') throw 'cancel'
-          const res = await LoginApi.getTenantIdByName(data.value)
-          authUtil.setTenantId(res)
-        } catch (error) {
-          if (error === 'cancel') return
-        } finally {
-          loginLoading.value = false
-        }
-      }
-    }
-    // 计算 redirectUri
-    // 注意: type、redirect 需要先 encode 一次，否则钉钉回调会丢失。
-    // 配合 social-login.vue#getUrlValue() 使用
-    const redirectUri =
-      location.origin +
-      '/social-login?' +
-      encodeURIComponent(`type=${type}&redirect=${redirect.value || '/'}`)
-
-    // 进行跳转
-    window.location.href = await LoginApi.socialAuthRedirect(type, encodeURIComponent(redirectUri))
-  }
-}
 watch(
   () => currentRoute.value,
   (route: RouteLocationNormalizedLoaded) => {
@@ -324,27 +265,193 @@ watch(
 onMounted(() => {
   getLoginFormCache()
   getTenantByWebsite()
+  getTenantList()
 })
 </script>
 
 <style lang="scss" scoped>
-:deep(.anticon) {
-  &:hover {
-    color: var(--el-color-primary) !important;
+.login-account-form {
+  width: 100%;
+  max-width: 430px;
+
+  .login-form-heading {
+    margin-bottom: 30px;
+    text-align: center;
+
+    .login-form-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 52px;
+      height: 52px;
+      margin-bottom: 18px;
+      color: #fff;
+      background: linear-gradient(145deg, #3485ff 0%, #0b5ff2 100%);
+      border-radius: 14px;
+      box-shadow: 0 12px 24px rgb(26 105 245 / 28%);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 30px;
+      font-weight: 700;
+      line-height: 1.3;
+      letter-spacing: -0.02em;
+      color: #111827;
+    }
+
+    p {
+      margin: 9px 0 0;
+      font-size: 14px;
+      line-height: 1.6;
+      color: #7a899d;
+    }
+  }
+
+  :deep(.el-form-item) {
+    margin-bottom: 19px;
+  }
+
+  :deep(.el-form-item__label) {
+    height: auto;
+    padding: 0;
+    margin-bottom: 8px;
+    font-size: 14px;
+    font-weight: 650;
+    line-height: 1.5;
+    color: #586a82;
+  }
+
+  :deep(.el-input__wrapper),
+  :deep(.el-select__wrapper) {
+    min-height: 50px;
+    padding: 0 15px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 0 0 1px #dce6f2 inset;
+    transition:
+      box-shadow 160ms ease,
+      transform 160ms ease;
+  }
+
+  :deep(.el-input__wrapper:hover),
+  :deep(.el-select__wrapper:hover) {
+    box-shadow: 0 0 0 1px #a9c8f9 inset;
+  }
+
+  :deep(.el-input__wrapper.is-focus),
+  :deep(.el-select__wrapper.is-focused) {
+    box-shadow:
+      0 0 0 1px #1769f5 inset,
+      0 0 0 4px rgb(23 105 245 / 10%);
+  }
+
+  :deep(.el-input__inner) {
+    font-size: 14px;
+    color: #172033;
+  }
+
+  :deep(.el-input__prefix-inner),
+  :deep(.el-select__prefix) {
+    color: #8394aa;
+  }
+
+  .login-options {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: -1px 0 21px;
+
+    :deep(.el-checkbox__label),
+    :deep(.el-link__inner) {
+      font-size: 13px;
+    }
+  }
+
+  .login-submit {
+    width: 100%;
+    min-height: 50px;
+    margin: 0;
+    font-weight: 650;
+    color: #fff;
+    background: #1769f5;
+    border: 0;
+    border-radius: 12px;
+    box-shadow: 0 12px 22px rgb(23 105 245 / 20%);
+
+    &:hover,
+    &:focus-visible {
+      background: #0d5ee8;
+    }
+  }
+
+  .login-secondary-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 14px;
+
+    :deep(.el-button) {
+      min-height: 46px;
+      margin: 0;
+      color: #53657c;
+      background: #fff;
+      border-color: #dce6f2;
+      border-radius: 11px;
+    }
+
+    :deep(.el-button:hover),
+    :deep(.el-button:focus-visible) {
+      color: #1769f5;
+      background: #f5f9ff;
+      border-color: #8ab7fa;
+    }
   }
 }
 
-.login-code {
-  float: right;
-  width: 100%;
-  height: 38px;
+:global(.dark) .login-account-form {
+  .login-form-heading h1 {
+    color: #f4f7fb;
+  }
 
-  img {
-    width: 100%;
-    height: auto;
-    max-width: 100px;
-    vertical-align: middle;
-    cursor: pointer;
+  .login-form-heading p,
+  :deep(.el-form-item__label) {
+    color: #9caec3;
+  }
+
+  :deep(.el-input__wrapper),
+  :deep(.el-select__wrapper),
+  .login-secondary-actions :deep(.el-button) {
+    background: #111a29;
+    box-shadow: 0 0 0 1px #2a3a50 inset;
+  }
+}
+
+@media (width <= 640px) {
+  .login-account-form {
+    .login-form-heading {
+      margin-bottom: 25px;
+
+      h1 {
+        font-size: 27px;
+      }
+    }
+
+    .login-secondary-actions {
+      gap: 8px;
+
+      :deep(.el-button) {
+        padding: 8px 6px;
+        font-size: 13px;
+      }
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-account-form :deep(.el-input__wrapper),
+  .login-account-form :deep(.el-select__wrapper) {
+    transition: none;
   }
 }
 </style>

@@ -1,147 +1,216 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" href="/favicon.ico" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta
-      name="keywords"
-      content="芋道管理系统 基于 vue3 + CompositionAPI + typescript + vite3 + element plus 的后台开源免费管理系统！"
-    />
-    <meta
-      name="description"
-      content="芋道管理系统 基于 vue3 + CompositionAPI + typescript + vite3 + element plus 的后台开源免费管理系统！"
-    />
+    <meta name="keywords" content="业务中台,数据市场,数据治理" />
+    <meta name="description" content="业务中台管理系统" />
     <title>%VITE_APP_TITLE%</title>
   </head>
   <body>
     <div id="app">
       <style>
+        html,
+        body,
+        #app {
+          width: 100%;
+          height: 100%;
+          margin: 0;
+        }
+
         .app-loading {
-          display: flex;
-          width: 100%;
-          height: 100%;
-          justify-content: center;
-          align-items: center;
-          flex-direction: column;
-          background: #f0f2f5;
-        }
-
-        .app-loading .app-loading-wrap {
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          display: flex;
-          -webkit-transform: translate3d(-50%, -50%, 0);
-          transform: translate3d(-50%, -50%, 0);
-          justify-content: center;
-          align-items: center;
-          flex-direction: column;
-        }
-
-        .app-loading .app-loading-title {
-          margin-bottom: 30px;
-          font-size: 20px;
-          font-weight: bold;
-          text-align: center;
-        }
-
-        .app-loading .app-loading-logo {
-          width: 100px;
-          margin: 0 auto 15px auto;
-        }
-
-        .app-loading .app-loading-item {
           position: relative;
-          display: inline-block;
-          width: 60px;
-          height: 60px;
-          vertical-align: middle;
-          border-radius: 50%;
+          display: grid;
+          min-height: 100%;
+          overflow: hidden;
+          place-items: center;
+          background:
+            radial-gradient(circle at 50% 47%, rgb(255 255 255 / 98%) 0 14%, transparent 42%),
+            radial-gradient(circle at 50% 56%, rgb(207 229 255 / 42%), transparent 52%),
+            linear-gradient(180deg, #f8fbff 0%, #f3f8ff 52%, #edf5ff 100%);
+          color: #0a397e;
+          font-family: 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif;
+          isolation: isolate;
         }
 
-        .app-loading .app-loading-outter {
+        .app-loading::before {
           position: absolute;
-          width: 100%;
-          height: 100%;
-          border: 4px solid #2d8cf0;
-          border-bottom: 0;
-          border-left-color: transparent;
+          z-index: -1;
+          top: 18%;
+          left: 50%;
+          width: min(72vw, 1100px);
+          height: min(46vw, 620px);
           border-radius: 50%;
-          animation: loader-outter 1s cubic-bezier(0.42, 0.61, 0.58, 0.41) infinite;
+          background: radial-gradient(circle, rgb(255 255 255 / 88%) 0 24%, transparent 68%);
+          content: '';
+          filter: blur(12px);
+          transform: translateX(-50%);
         }
 
-        .app-loading .app-loading-inner {
+        .app-loading-flow {
           position: absolute;
-          top: calc(50% - 20px);
-          left: calc(50% - 20px);
-          width: 40px;
-          height: 40px;
-          border: 4px solid #87bdff;
-          border-right: 0;
-          border-top-color: transparent;
+          z-index: -2;
+          top: 27%;
+          left: -3%;
+          width: 106%;
+          height: 38%;
+          opacity: 0.55;
+        }
+
+        .app-loading-flow path {
+          fill: none;
+          stroke: url('#app-loading-flow-gradient');
+          stroke-linecap: round;
+          vector-effect: non-scaling-stroke;
+        }
+
+        .app-loading-flow rect {
+          fill: #83c8ff;
+          opacity: 0.42;
+        }
+
+        .app-loading-grid {
+          position: absolute;
+          z-index: -3;
+          top: 51%;
+          left: 50%;
+          width: 118%;
+          height: 76%;
+          background-image:
+            linear-gradient(rgb(113 174 234 / 18%) 1px, transparent 1px),
+            linear-gradient(90deg, rgb(113 174 234 / 18%) 1px, transparent 1px);
+          background-size: 70px 52px;
+          mask-image: linear-gradient(to bottom, rgb(0 0 0 / 48%), transparent 76%);
+          opacity: 0.44;
+          transform: translateX(-50%) perspective(560px) rotateX(61deg) scale(1.18);
+          transform-origin: top center;
+        }
+
+        .app-loading-wrap {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-direction: column;
+          transform: translateY(-1.5vh);
+        }
+
+        .app-loading-title {
+          font-size: clamp(22px, 2vw, 30px);
+          font-weight: 600;
+          letter-spacing: 0.1em;
+          line-height: 1.4;
+          text-shadow: 0 8px 28px rgb(45 111 194 / 14%);
+        }
+
+        .app-loading-dots {
+          display: flex;
+          margin-top: 17px;
+          gap: 10px;
+        }
+
+        .app-loading-dot {
+          width: 8px;
+          height: 8px;
           border-radius: 50%;
-          animation: loader-inner 1s cubic-bezier(0.42, 0.61, 0.58, 0.41) infinite;
+          animation: app-loading-bounce 1.2s ease-in-out infinite;
+          background: #2478e8;
+          box-shadow: 0 4px 12px rgb(36 120 232 / 32%);
         }
 
-        @-webkit-keyframes loader-outter {
-          0% {
-            -webkit-transform: rotate(0deg);
-            transform: rotate(0deg);
-          }
-
-          100% {
-            -webkit-transform: rotate(360deg);
-            transform: rotate(360deg);
-          }
+        .app-loading-dot:nth-child(2) {
+          animation-delay: 0.16s;
         }
 
-        @keyframes loader-outter {
-          0% {
-            -webkit-transform: rotate(0deg);
-            transform: rotate(0deg);
-          }
-
-          100% {
-            -webkit-transform: rotate(360deg);
-            transform: rotate(360deg);
-          }
+        .app-loading-dot:nth-child(3) {
+          animation-delay: 0.32s;
         }
 
-        @-webkit-keyframes loader-inner {
+        @keyframes app-loading-bounce {
           0% {
-            -webkit-transform: rotate(0deg);
-            transform: rotate(0deg);
+            opacity: 0.34;
+            transform: translateY(0) scale(0.78);
           }
 
+          38% {
+            opacity: 1;
+            transform: translateY(-6px) scale(1);
+          }
+
+          76%,
           100% {
-            -webkit-transform: rotate(-360deg);
-            transform: rotate(-360deg);
+            opacity: 0.34;
+            transform: translateY(0) scale(0.78);
           }
         }
 
-        @keyframes loader-inner {
-          0% {
-            -webkit-transform: rotate(0deg);
-            transform: rotate(0deg);
+        @media (max-width: 640px) {
+          .app-loading-flow {
+            top: 30%;
+            height: 32%;
           }
 
-          100% {
-            -webkit-transform: rotate(-360deg);
-            transform: rotate(-360deg);
+          .app-loading-grid {
+            background-size: 46px 38px;
+          }
+
+          .app-loading-title {
+            font-size: 22px;
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .app-loading-dot {
+            animation: none;
+            opacity: 0.72;
           }
         }
       </style>
       <div class="app-loading">
-        <div class="app-loading-wrap">
-          <div class="app-loading-title">
-            <img src="/logo.gif" class="app-loading-logo" alt="Logo" />
-            <div class="app-loading-title">%VITE_APP_TITLE%</div>
-          </div>
-          <div class="app-loading-item">
-            <div class="app-loading-outter"></div>
-            <div class="app-loading-inner"></div>
+        <svg
+          class="app-loading-flow"
+          viewBox="0 0 1440 360"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <defs>
+            <linearGradient id="app-loading-flow-gradient" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stop-color="#82c6ff" stop-opacity="0.34" />
+              <stop offset="0.42" stop-color="#d9edff" stop-opacity="0.2" />
+              <stop offset="0.58" stop-color="#d9edff" stop-opacity="0.2" />
+              <stop offset="1" stop-color="#82c6ff" stop-opacity="0.34" />
+            </linearGradient>
+          </defs>
+          <path
+            d="M-80 154 C120 82 270 226 456 161 C634 99 758 235 958 158 C1144 87 1290 211 1520 143"
+          />
+          <path
+            d="M-80 184 C114 111 286 251 470 185 C654 119 788 252 970 181 C1157 109 1318 233 1520 172"
+          />
+          <path
+            d="M-80 214 C116 143 296 276 484 209 C666 144 803 273 990 206 C1170 141 1326 257 1520 205"
+          />
+          <path
+            d="M-80 244 C132 177 310 294 506 238 C684 187 824 292 1008 235 C1192 178 1330 281 1520 237"
+          />
+          <rect x="34" y="184" width="17" height="8" rx="1" />
+          <rect x="112" y="147" width="12" height="6" rx="1" />
+          <rect x="278" y="224" width="14" height="7" rx="1" />
+          <rect x="412" y="178" width="10" height="6" rx="1" />
+          <rect x="918" y="189" width="12" height="7" rx="1" />
+          <rect x="1116" y="137" width="15" height="8" rx="1" />
+          <rect x="1274" y="217" width="12" height="7" rx="1" />
+          <rect x="1376" y="158" width="17" height="8" rx="1" />
+        </svg>
+        <div class="app-loading-grid" aria-hidden="true"></div>
+        <div class="app-loading-wrap" role="status" aria-live="polite" aria-atomic="true">
+          <div class="app-loading-title">数据加载中</div>
+          <div class="app-loading-dots" aria-hidden="true">
+            <span class="app-loading-dot"></span>
+            <span class="app-loading-dot"></span>
+            <span class="app-loading-dot"></span>
           </div>
         </div>
       </div>

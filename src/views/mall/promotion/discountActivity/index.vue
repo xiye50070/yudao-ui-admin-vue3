@@ -1,6 +1,4 @@
 <template>
-  <doc-alert title="【营销】限时折扣" url="https://doc.iocoder.cn/mall/promotion-discount/" />
-
   <ContentWrap>
     <!-- 搜索工作栏 -->
     <el-form

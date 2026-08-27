@@ -155,10 +155,8 @@ export const useApiSelect = (option: ApiSelectProps) => {
           parseOptions0(data)
           return
         }
-        // 情况三：不是 yudao-vue-pro 标准返回
-        console.warn(
-          `接口[${props.url}] 返回结果不是 yudao-vue-pro 标准返回建议采用自定义解析函数处理`
-        )
+        // 情况三：不是系统标准返回
+        console.warn(`接口[${props.url}] 返回结果不是系统标准返回，建议采用自定义解析函数处理`)
       }
 
       function parseOptions0(data: any[]) {

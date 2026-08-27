@@ -1,90 +1,180 @@
 <template>
-  <ContentWrap
-    ><el-form :inline="true"
-      ><el-form-item
-        ><el-input
-          v-model="query.keyword"
-          placeholder="数据集名称或编码"
-          clearable
-          @keyup.enter="getList" /></el-form-item
-      ><el-form-item
-        ><el-button @click="getList">查询</el-button
-        ><el-button
-          v-hasPermi="['data-market:dataset:create']"
-          type="primary"
-          plain
-          @click="openDrawer()"
-          ><Icon icon="ep:plus" class="mr-5px" />新增数据集</el-button
-        ></el-form-item
-      ></el-form
-    ></ContentWrap
+  <DataMarketManagementPage
+    page-key="dataset"
+    title="数据集管理"
+    description="维护数据资产、字段结构、标准与访问范围"
+    icon="ep:coin"
   >
-  <ContentWrap
-    ><el-table v-loading="loading" :data="list"
-      ><el-table-column prop="businessName" label="数据集名称" /><el-table-column
-        prop="datasetCode"
-        label="编码"
-      /><el-table-column label="来源系统" min-width="140"
-        ><template #default="{ row }">{{
-          row.sourceSystemName || resolveSourceSystemName(row.sourceSystemId)
-        }}</template></el-table-column
-      ><el-table-column label="业务主题域" min-width="140"
-        ><template #default="{ row }">{{
-          row.subjectDomainName || resolveSubjectDomainName(row.subjectDomainId)
-        }}</template></el-table-column
-      ><el-table-column prop="sensitivityLevel" label="敏感级" width="90" /><el-table-column
-        label="状态"
-        width="100"
-        ><template #default="{ row }">{{
-          row.publishStatus === 1 ? '已发布' : '草稿'
-        }}</template></el-table-column
-      ><el-table-column label="操作" width="340"
-        ><template #default="{ row }"
-          ><el-button
-            v-hasPermi="['data-market:dataset:update']"
-            link
-            type="primary"
-            @click="openDrawer(row)"
-            >编辑</el-button
-          ><el-button
-            v-hasPermi="['data-market:dataset:update']"
-            link
-            type="primary"
-            @click="openFields(row)"
-            >字段</el-button
-          ><el-button
-            v-hasPermi="['data-market:data-standard:query']"
-            link
-            type="primary"
-            @click="openStandards(row)"
-            >数据标准</el-button
-          ><el-button
-            v-hasPermi="['data-market:access-policy:update']"
-            link
-            type="primary"
-            @click="openAcl(row)"
-            >ACL</el-button
-          ><el-button
-            v-hasPermi="['data-market:dataset:publish']"
-            link
-            type="success"
-            @click="openPublish(row)"
-            >发布</el-button
-          ><el-button
-            v-hasPermi="['data-market:dataset:delete']"
-            link
-            type="danger"
-            @click="remove(row.id)"
-            >删除</el-button
-          ></template
-        ></el-table-column
-      ></el-table
-    ><Pagination
-      v-model:limit="query.pageSize"
-      v-model:page="query.pageNo"
-      :total="total"
-      @pagination="getList"
-  /></ContentWrap>
+    <template #actions>
+      <el-tooltip content="刷新数据集" placement="bottom">
+        <el-button :loading="loading" aria-label="刷新数据集" @click="getList">
+          <Icon v-if="!loading" icon="ep:refresh" />
+        </el-button>
+      </el-tooltip>
+      <el-button v-hasPermi="['data-market:dataset:create']" type="primary" @click="openDrawer()">
+        <Icon icon="ep:plus" />新增数据集
+      </el-button>
+    </template>
+
+    <template #summary>
+      <div class="dm-summary-item">
+        <span class="dm-summary-item__icon"><Icon icon="ep:coin" /></span>
+        <span class="dm-summary-item__content"
+          ><small>目录数据集</small><strong>{{ total }}</strong></span
+        >
+      </div>
+      <div class="dm-summary-item">
+        <span class="dm-summary-item__icon"><Icon icon="ep:circle-check" /></span>
+        <span class="dm-summary-item__content"
+          ><small>本页已发布</small><strong>{{ currentPublishedCount }}</strong></span
+        >
+      </div>
+      <div class="dm-summary-item">
+        <span class="dm-summary-item__icon"><Icon icon="ep:edit-pen" /></span>
+        <span class="dm-summary-item__content"
+          ><small>本页草稿</small><strong>{{ currentDraftCount }}</strong></span
+        >
+      </div>
+    </template>
+
+    <section class="dm-panel">
+      <header class="dm-panel__header">
+        <div>
+          <h2>数据集目录</h2>
+          <p v-if="!loadError">共 {{ total }} 个数据集</p>
+          <p v-else>数据集目录暂不可用</p>
+        </div>
+        <div class="dm-toolbar dataset-toolbar">
+          <el-input
+            v-model="query.keyword"
+            clearable
+            placeholder="搜索数据集名称或编码"
+            aria-label="搜索数据集"
+            @keyup.enter="handleQuery"
+          >
+            <template #prefix><Icon icon="ep:search" /></template>
+          </el-input>
+          <el-button type="primary" plain @click="handleQuery">查询</el-button>
+          <el-button @click="resetQuery">重置</el-button>
+        </div>
+      </header>
+
+      <el-result
+        v-if="loadError"
+        class="dm-load-result"
+        icon="warning"
+        title="数据集加载失败"
+        sub-title="暂时无法获取数据集目录，请稍后重试"
+      >
+        <template #extra><el-button type="primary" @click="getList">重新加载</el-button></template>
+      </el-result>
+      <template v-else>
+        <div class="dm-table-wrap">
+          <el-table v-loading="loading" :data="list" empty-text="暂无数据集" table-layout="fixed">
+            <el-table-column label="数据集" min-width="260">
+              <template #default="{ row }">
+                <div class="dm-entity-cell">
+                  <span class="dm-entity-mark"><Icon icon="ep:coin" /></span>
+                  <span class="dm-entity-copy">
+                    <strong :title="row.businessName">{{ row.businessName }}</strong>
+                    <small :title="row.description || '暂无说明'">{{
+                      row.description || '暂无说明'
+                    }}</small>
+                  </span>
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column label="编码" min-width="150">
+              <template #default="{ row }"
+                ><span class="dm-code" :title="row.datasetCode">{{
+                  row.datasetCode
+                }}</span></template
+              >
+            </el-table-column>
+            <el-table-column label="来源与主题域" min-width="190">
+              <template #default="{ row }">
+                <div>{{ row.sourceSystemName || resolveSourceSystemName(row.sourceSystemId) }}</div>
+                <div class="dm-secondary">{{
+                  row.subjectDomainName || resolveSubjectDomainName(row.subjectDomainId)
+                }}</div>
+              </template>
+            </el-table-column>
+            <el-table-column label="敏感级" width="100" align="center">
+              <template #default="{ row }"
+                ><el-tag type="warning" effect="plain" round
+                  >L{{ row.sensitivityLevel }}</el-tag
+                ></template
+              >
+            </el-table-column>
+            <el-table-column label="状态" width="108" align="center">
+              <template #default="{ row }"
+                ><el-tag
+                  :type="row.publishStatus === 1 ? 'success' : 'info'"
+                  effect="light"
+                  round
+                  >{{ row.publishStatus === 1 ? '已发布' : '草稿' }}</el-tag
+                ></template
+              >
+            </el-table-column>
+            <el-table-column label="操作" width="360" align="right">
+              <template #default="{ row }">
+                <div class="dm-row-actions">
+                  <el-button
+                    v-hasPermi="['data-market:dataset:update']"
+                    link
+                    type="primary"
+                    @click="openDrawer(row)"
+                    >编辑</el-button
+                  >
+                  <el-button
+                    v-hasPermi="['data-market:dataset:update']"
+                    link
+                    type="primary"
+                    @click="openFields(row)"
+                    >字段</el-button
+                  >
+                  <el-button
+                    v-hasPermi="['data-market:data-standard:query']"
+                    link
+                    type="primary"
+                    @click="openStandards(row)"
+                    >数据标准</el-button
+                  >
+                  <el-button
+                    v-hasPermi="['data-market:access-policy:update']"
+                    link
+                    type="primary"
+                    @click="openAcl(row)"
+                    >ACL</el-button
+                  >
+                  <el-button
+                    v-hasPermi="['data-market:dataset:publish']"
+                    link
+                    type="success"
+                    @click="openPublish(row)"
+                    >发布</el-button
+                  >
+                  <el-button
+                    v-hasPermi="['data-market:dataset:delete']"
+                    link
+                    type="danger"
+                    @click="remove(row.id)"
+                    >删除</el-button
+                  >
+                </div>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+        <Pagination
+          v-model:limit="query.pageSize"
+          v-model:page="query.pageNo"
+          :total="total"
+          @pagination="getList"
+        />
+      </template>
+    </section>
+  </DataMarketManagementPage>
   <el-drawer v-model="drawer" :title="form.id ? '编辑数据集' : '新增数据集'" size="560px"
     ><el-form ref="formRef" :model="form" :rules="rules" label-width="100px"
       ><el-form-item label="数据集名称" prop="businessName"
@@ -181,10 +271,12 @@
             ></div
           ></template
         ></el-table-column
-      ><el-table-column label="敏感级"
+      ><el-table-column label="敏感级" width="168"
         ><template #default="{ row }"
           ><el-input-number
             v-model="row.sensitivityLevel"
+            :aria-label="`${fieldDisplayName(row)}敏感级`"
+            class="!w-1/1"
             :min="1"
             :max="4" /></template></el-table-column
       ><el-table-column label="说明"
@@ -365,6 +457,7 @@ import type {
 import * as SecurityApi from '@/api/dataMarket/security'
 import SourceSystemSelect from '@/views/dataMarket/components/SourceSystemSelect.vue'
 import SubjectDomainSelect from '@/views/dataMarket/components/SubjectDomainSelect.vue'
+import DataMarketManagementPage from '@/views/dataMarket/components/DataMarketManagementPage.vue'
 import {
   mergeSourceSystemOptions,
   type SourceSystemOption
@@ -383,6 +476,7 @@ interface EditableDatasetAclRule extends Omit<DatasetAclRule, 'principalId'> {
 defineOptions({ name: 'DataMarketDataset' })
 const message = useMessage()
 const loading = ref(false)
+const loadError = ref(false)
 const list = ref<DatasetVO[]>([])
 const total = ref(0)
 const query = reactive({ pageNo: 1, pageSize: 10, keyword: '' })
@@ -455,6 +549,12 @@ const tagOptions = computed(() =>
 const departmentTree = computed(() =>
   handleTree(aclDepartments.value.map((department) => ({ ...department })))
 )
+const currentPublishedCount = computed(
+  () => list.value.filter((dataset) => dataset.publishStatus === 1).length
+)
+const currentDraftCount = computed(
+  () => list.value.filter((dataset) => dataset.publishStatus !== 1).length
+)
 
 watch(aclVisible, (visible) => {
   if (visible) return
@@ -520,13 +620,24 @@ const searchSourceSystems = async (keyword = '') => {
 }
 const getList = async () => {
   loading.value = true
+  loadError.value = false
   try {
     const data = await CatalogApi.getDatasetPage(query)
     list.value = data.list
     total.value = data.total
+  } catch {
+    loadError.value = true
   } finally {
     loading.value = false
   }
+}
+const handleQuery = () => {
+  query.pageNo = 1
+  void getList()
+}
+const resetQuery = () => {
+  query.keyword = ''
+  handleQuery()
 }
 const openDrawer = async (row?: DatasetVO) => {
   Object.assign(form, {
@@ -820,7 +931,11 @@ onMounted(() => {
   searchSourceSystems()
 })
 </script>
-<style scoped>
+<style scoped lang="scss">
+.dataset-toolbar :deep(.el-input) {
+  width: min(310px, 30vw);
+}
+
 .acl-principal-cell {
   padding: 4px 0;
 }
@@ -848,5 +963,11 @@ onMounted(() => {
   max-width: 165px;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+@media (width <= 900px) {
+  .dataset-toolbar :deep(.el-input) {
+    width: 100%;
+  }
 }
 </style>

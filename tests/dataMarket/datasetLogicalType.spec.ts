@@ -1,5 +1,5 @@
 import { computed, defineComponent, h, inject, provide, type InjectionKey, type Ref } from 'vue'
-import { fireEvent, render, waitFor } from '@testing-library/vue'
+import { fireEvent, render, waitFor, within } from '@testing-library/vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import DatasetPage from '@/views/dataMarket/dataset/index.vue'
 
@@ -99,14 +99,26 @@ const TableStub = defineComponent({
   }
 })
 const TableColumnStub = defineComponent({
-  props: ['label'],
+  props: {
+    label: String,
+    width: [String, Number],
+    minWidth: [String, Number]
+  },
   setup(props, { slots }) {
     const row = inject(tableRowKey)!
     return () =>
-      h('section', [
-        props.label ? h('div', { role: 'columnheader' }, props.label) : undefined,
-        row.value && slots.default ? slots.default({ row: row.value }) : undefined
-      ])
+      h(
+        'section',
+        {
+          'data-column-label': props.label,
+          'data-column-width': props.width,
+          'data-column-min-width': props.minWidth
+        },
+        [
+          props.label ? h('div', { role: 'columnheader' }, props.label) : undefined,
+          row.value && slots.default ? slots.default({ row: row.value }) : undefined
+        ]
+      )
   }
 })
 
@@ -220,5 +232,22 @@ describe('dataset field logical-type selector', () => {
     await fireEvent.click(wrapper.getByRole('button', { name: '重新匹配' }))
     await waitFor(() => expect(preprocessingMocks.previewFieldType).toHaveBeenCalledTimes(2))
     expect(logicalTypeSelect).toHaveValue('201')
+  })
+
+  it('keeps the sensitivity number control inside a dedicated field column', async () => {
+    const wrapper = render(DatasetPage, { global })
+
+    await waitFor(() => expect(catalogMocks.getDatasetPage).toHaveBeenCalledTimes(1))
+    await fireEvent.click(await wrapper.findByRole('button', { name: '字段' }))
+    await waitFor(() => expect(catalogMocks.getDatasetFields).toHaveBeenCalledWith(42))
+
+    const fieldDialog = wrapper.getByRole('heading', { name: '字段编辑' }).parentElement!
+    const sensitivityColumn = within(fieldDialog)
+      .getByRole('columnheader', { name: '敏感级' })
+      .closest('[data-column-label="敏感级"]')
+
+    expect(sensitivityColumn).toHaveAttribute('data-column-width', '168')
+    const sensitivityInput = within(fieldDialog).getByLabelText('员工编号敏感级')
+    expect(sensitivityInput).toHaveClass('!w-1/1')
   })
 })

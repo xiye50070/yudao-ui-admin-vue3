@@ -1,6 +1,4 @@
 <template>
-  <doc-alert title="审批接入（业务表单）" url="https://doc.iocoder.cn/bpm/use-business-form/" />
-
   <ContentWrap>
     <!-- 搜索工作栏 -->
     <el-form

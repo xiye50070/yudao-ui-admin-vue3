@@ -198,18 +198,7 @@ service.interceptors.response.use(
       ElMessage.error(t('sys.api.errMsg500'))
       return Promise.reject(new Error(msg))
     } else if (code === 901) {
-      ElMessage.error({
-        offset: 300,
-        dangerouslyUseHTMLString: true,
-        message:
-          '<div>' +
-          t('sys.api.errMsg901') +
-          '</div>' +
-          '<div> &nbsp; </div>' +
-          '<div>参考 https://doc.iocoder.cn/ 教程</div>' +
-          '<div> &nbsp; </div>' +
-          '<div>5 分钟搭建本地环境</div>'
-      })
+      ElMessage.error(t('sys.api.errMsg901'))
       return Promise.reject(new Error(msg))
     } else if (code !== 0 && code !== 200) {
       // 某些页面需要根据明确的业务错误码切换状态，例如“交付批次不存在”进入创建方案页。

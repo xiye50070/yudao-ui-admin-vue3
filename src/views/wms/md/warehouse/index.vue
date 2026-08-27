@@ -1,7 +1,5 @@
 <!-- WMS 仓库管理 -->
 <template>
-  <doc-alert title="【基础】仓库" url="https://doc.iocoder.cn/wms/md/warehouse/" />
-
   <ContentWrap>
     <!-- 搜索工作栏 -->
     <el-form
