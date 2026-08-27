@@ -1,5 +1,5 @@
 import request from '@/config/axios'
-import type { PageParam, PageResult, PrincipalType, TagVO } from './types'
+import type { FilterDimensionVO, PageParam, PageResult, PrincipalType, TagVO } from './types'
 
 const management = '/data-market/management'
 
@@ -56,6 +56,15 @@ export interface IndicatorAclRule {
   principalId: number
   includeChildDept: boolean
 }
+
+export interface IndicatorReferenceOptions {
+  domains: IndicatorDomainVO[]
+  filterDimensions: FilterDimensionVO[]
+  tags: TagVO[]
+}
+
+export const getIndicatorReferenceOptions = () =>
+  request.get<IndicatorReferenceOptions>({ url: `${management}/indicator-reference-options` })
 
 export const getIndicatorPage = (params: IndicatorPageReq) =>
   request.get<PageResult<IndicatorVO>>({ url: `${management}/indicators`, params })

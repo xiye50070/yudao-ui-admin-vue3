@@ -153,6 +153,7 @@ const saving = ref(false)
 const rules = ref<EditableIndicatorAclRule[]>([])
 const departments = ref<DeptApi.DeptVO[]>([])
 const roles = ref<RoleApi.RoleVO[]>([])
+const originalRuleCount = ref(0)
 let rowSequence = 0
 let loadSequence = 0
 
@@ -170,6 +171,7 @@ const reset = () => {
   loading.value = false
   saving.value = false
   rules.value = []
+  originalRuleCount.value = 0
 }
 
 const load = async () => {
@@ -186,6 +188,7 @@ const load = async () => {
     if (sequence !== loadSequence || !props.modelValue) return
     departments.value = departmentOptions || []
     roles.value = roleOptions || []
+    originalRuleCount.value = (aclRules || []).length
     const departmentIds = new Set(departments.value.map((item) => item.id))
     const roleIds = new Set(roles.value.map((item) => item.id))
     rules.value = (aclRules || []).map((rule) => {
@@ -246,12 +249,17 @@ const save = async () => {
   }))
   saving.value = true
   try {
+    if (originalRuleCount.value > 0 && normalizedRules.length === 0) {
+      await message.confirm(
+        '清空全部 ACL 后，该指标将对当前租户内拥有指标浏览权限的用户开放。确认继续吗？'
+      )
+    }
     await IndicatorApi.updateIndicatorAcl(props.indicatorId, normalizedRules)
     message.success('ACL 已保存')
     emit('saved')
     emit('update:modelValue', false)
-  } catch {
-    message.error('ACL 保存失败，请重试')
+  } catch (error) {
+    if (error !== 'cancel' && error !== 'close') message.error('ACL 保存失败，请重试')
   } finally {
     saving.value = false
   }

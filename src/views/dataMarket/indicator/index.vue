@@ -296,28 +296,24 @@
                 :key="tag.id"
                 :label="tag.name"
                 :value="tag.id"
-                :disabled="tag.status !== 0 && !form.tagIds.includes(tag.id!)"
+                :disabled="
+                  (group.disabled || tag.status !== 0) && !form.tagIds.includes(tag.id!)
+                "
               />
             </el-option-group>
           </el-select>
         </el-form-item>
-        <el-form-item label="状态" prop="status">
-          <el-switch
-            v-model="form.status"
-            :active-value="0"
-            :inactive-value="1"
-            active-text="启用"
-            inactive-text="停用"
-          />
+        <el-form-item label="状态">
+          <el-tag :type="form.status === 0 ? 'success' : 'info'" effect="light">
+            {{
+              form.id
+                ? form.status === 0
+                  ? '启用'
+                  : '停用'
+                : '停用（保存后可配置 ACL，再从列表启用）'
+            }}
+          </el-tag>
         </el-form-item>
-        <el-alert
-          v-if="form.status === 0"
-          title="启用后，租户内拥有指标浏览权限的用户均可查看"
-          description="如需限制范围，请先保存指标，再通过列表中的 ACL 入口配置部门或角色。"
-          type="warning"
-          :closable="false"
-          show-icon
-        />
       </section>
 
       <section class="editor-section">
@@ -429,7 +425,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import type { FormInstance, FormRules } from 'element-plus'
-import * as CatalogApi from '@/api/dataMarket/catalog'
 import * as IndicatorApi from '@/api/dataMarket/indicator'
 import type {
   IndicatorDomainVO,
@@ -451,6 +446,7 @@ type EditableIndicator = Omit<IndicatorVO, 'indicatorDomainId'> & {
 interface TagGroup {
   id: string
   name: string
+  disabled: boolean
   options: TagVO[]
 }
 
@@ -462,6 +458,7 @@ const total = ref(0)
 const domains = ref<IndicatorDomainVO[]>([])
 const tags = ref<TagVO[]>([])
 const dimensions = ref<FilterDimensionVO[]>([])
+let pageLoadSequence = 0
 const query = reactive<IndicatorPageReq>({
   pageNo: 1,
   pageSize: 10,
@@ -483,42 +480,41 @@ const tagGroups = computed<TagGroup[]>(() => {
     .map((dimension) => ({
       id: String(dimension.id),
       name: dimension.name,
+      disabled: dimension.status !== 0,
       options: tags.value.filter((tag) => tag.dimensionId === dimension.id)
     }))
     .filter((group) => group.options.length)
   const assigned = new Set(groups.flatMap((group) => group.options.map((tag) => tag.id)))
   const ungrouped = tags.value.filter((tag) => !assigned.has(tag.id))
   return ungrouped.length
-    ? [...groups, { id: 'ungrouped', name: '其他标签', options: ungrouped }]
+    ? [...groups, { id: 'ungrouped', name: '其他标签', disabled: true, options: ungrouped }]
     : groups
 })
 
 const loadReferences = async () => {
   try {
-    const [domainOptions, tagOptions, dimensionOptions] = await Promise.all([
-      IndicatorApi.getIndicatorDomainList(),
-      CatalogApi.getTags(),
-      CatalogApi.getFilterDimensions()
-    ])
-    domains.value = domainOptions || []
-    tags.value = tagOptions || []
-    dimensions.value = dimensionOptions || []
+    const options = await IndicatorApi.getIndicatorReferenceOptions()
+    domains.value = options?.domains || []
+    tags.value = options?.tags || []
+    dimensions.value = options?.filterDimensions || []
   } catch {
     message.error('指标领域或标准标签加载失败，请重试')
   }
 }
 
 const loadPage = async () => {
+  const sequence = ++pageLoadSequence
   loading.value = true
   loadError.value = false
   try {
     const result = await IndicatorApi.getIndicatorPage({ ...query })
+    if (sequence !== pageLoadSequence) return
     indicators.value = result?.list || []
     total.value = result?.total || 0
   } catch {
-    loadError.value = true
+    if (sequence === pageLoadSequence) loadError.value = true
   } finally {
-    loading.value = false
+    if (sequence === pageLoadSequence) loading.value = false
   }
 }
 

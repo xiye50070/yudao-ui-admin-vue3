@@ -3,6 +3,7 @@ import ElementPlus from 'element-plus'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import IndicatorPage from '@/views/dataMarket/indicator/index.vue'
 import source from '@/views/dataMarket/indicator/index.vue?raw'
+import apiSource from '@/api/dataMarket/indicator.ts?raw'
 
 const indicatorApi = vi.hoisted(() => ({
   getIndicatorPage: vi.fn(),
@@ -11,7 +12,7 @@ const indicatorApi = vi.hoisted(() => ({
   updateIndicator: vi.fn(),
   deleteIndicator: vi.fn(),
   updateIndicatorStatus: vi.fn(),
-  getIndicatorDomainList: vi.fn(),
+  getIndicatorReferenceOptions: vi.fn(),
   getIndicatorAcl: vi.fn(),
   updateIndicatorAcl: vi.fn()
 }))
@@ -101,7 +102,19 @@ describe('indicator management', () => {
     indicatorApi.updateIndicator.mockResolvedValue(undefined)
     indicatorApi.deleteIndicator.mockResolvedValue(undefined)
     indicatorApi.updateIndicatorStatus.mockResolvedValue(undefined)
-    indicatorApi.getIndicatorDomainList.mockResolvedValue([domain])
+    indicatorApi.getIndicatorReferenceOptions.mockResolvedValue({
+      domains: [domain],
+      tags,
+      filterDimensions: [
+        {
+          id: 31,
+          code: 'IND_REGULATORY_AREA',
+          name: '监管领域',
+          sort: 1,
+          status: 0
+        }
+      ]
+    })
     indicatorApi.getIndicatorAcl.mockResolvedValue([])
     indicatorApi.updateIndicatorAcl.mockResolvedValue(undefined)
     catalogApi.getTags.mockResolvedValue(tags)
@@ -128,6 +141,9 @@ describe('indicator management', () => {
     expect(indicatorApi.getIndicatorPage).toHaveBeenCalledWith(
       expect.objectContaining({ pageNo: 1, pageSize: 10 })
     )
+    expect(indicatorApi.getIndicatorReferenceOptions).toHaveBeenCalledTimes(1)
+    expect(catalogApi.getTags).not.toHaveBeenCalled()
+    expect(catalogApi.getFilterDimensions).not.toHaveBeenCalled()
     expect(screen.queryByRole('button', { name: '申请指标' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '试算' })).not.toBeInTheDocument()
   })
@@ -144,6 +160,8 @@ describe('indicator management', () => {
     await fireEvent.click(within(drawer).getByRole('combobox', { name: '标准标签' }))
     await fireEvent.click(await screen.findByRole('option', { name: '财务领域' }))
     await fireEvent.click(await screen.findByRole('option', { name: '重大事项' }))
+    expect(within(drawer).queryByRole('switch')).not.toBeInTheDocument()
+    expect(within(drawer).getByText('停用（保存后可配置 ACL，再从列表启用）')).toBeInTheDocument()
     await fireEvent.click(within(drawer).getByRole('button', { name: '保存' }))
 
     await waitFor(() =>
@@ -159,6 +177,56 @@ describe('indicator management', () => {
     )
   })
 
+  it('keeps status read-only in the editor and preserves it on ordinary edits', async () => {
+    renderPage()
+
+    await fireEvent.click(await screen.findByRole('button', { name: '编辑' }))
+    const drawer = await screen.findByRole('dialog', { name: '编辑指标' })
+    expect(within(drawer).queryByRole('switch')).not.toBeInTheDocument()
+    expect(within(drawer).getByText('停用')).toBeInTheDocument()
+    await fireEvent.click(within(drawer).getByRole('button', { name: '保存' }))
+
+    await waitFor(() => expect(indicatorApi.updateIndicator).toHaveBeenCalledWith(
+      41,
+      expect.objectContaining({ status: 1 })
+    ))
+    expect(indicatorApi.updateIndicatorStatus).not.toHaveBeenCalled()
+  })
+
+  it('requires the dedicated enable confirmation before changing visibility', async () => {
+    renderPage()
+
+    await fireEvent.click(await screen.findByRole('button', { name: '启用' }))
+    const dialog = await screen.findByRole('dialog', { name: '确认启用指标' })
+    expect(within(dialog).getByText('若尚未配置 ACL，该指标将在当前租户内开放；可取消并先配置 ACL。')).toBeInTheDocument()
+    expect(indicatorApi.updateIndicatorStatus).not.toHaveBeenCalled()
+    await fireEvent.click(within(dialog).getByRole('button', { name: '确认启用' }))
+
+    await waitFor(() => expect(indicatorApi.updateIndicatorStatus).toHaveBeenCalledWith(41, 0))
+  })
+
+  it('ignores a stale page response after a newer refresh completes', async () => {
+    let resolveFirst!: (value: { list: (typeof row)[]; total: number }) => void
+    const newerRow = { ...row, id: 42, indicatorCode: 'GZJG-002', indicatorName: '净资产收益率' }
+    indicatorApi.getIndicatorPage
+      .mockReset()
+      .mockReturnValueOnce(new Promise((resolve) => { resolveFirst = resolve }))
+      .mockResolvedValueOnce({ list: [newerRow], total: 1 })
+    renderPage()
+
+    await fireEvent.click(await screen.findByRole('button', { name: '查询' }))
+    expect(await screen.findByText('净资产收益率')).toBeInTheDocument()
+    resolveFirst({ list: [row], total: 1 })
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(screen.queryByText('资产负债率')).not.toBeInTheDocument()
+  })
+
+  it('declares one indicator-query reference endpoint for domains dimensions and tags', () => {
+    expect(apiSource).toContain('/indicator-reference-options')
+    expect(source).toContain('getIndicatorReferenceOptions')
+  })
+
   it('keeps the source focused on definitions, descriptions, independent domains and ACL', () => {
     expect(source).toContain('维护指标定义、说明、领域、标签、状态与访问范围')
     expect(source).toContain('calculationDescription')
@@ -166,8 +234,7 @@ describe('indicator management', () => {
     expect(source).toContain('dataSourceDescription')
     expect(source).toContain('businessPenetration')
     expect(source).toContain('supplementaryDescription')
-    expect(source).toContain('getIndicatorDomainList')
-    expect(source).toContain('getTags')
+    expect(source).toContain('getIndicatorReferenceOptions')
     expect(source).toContain('启用后，租户内拥有指标浏览权限的用户均可查看')
     expect(source).not.toContain('getSubjectDomainList')
     expect(source).not.toContain('SubjectDomainSelect')

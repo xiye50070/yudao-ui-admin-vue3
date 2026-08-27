@@ -12,7 +12,8 @@ const roleApi = vi.hoisted(() => ({ getSimpleRoleList: vi.fn() }))
 const messageApi = vi.hoisted(() => ({
   success: vi.fn(),
   warning: vi.fn(),
-  error: vi.fn()
+  error: vi.fn(),
+  confirm: vi.fn()
 }))
 
 vi.mock('@/api/dataMarket/indicator', () => indicatorApi)
@@ -100,5 +101,25 @@ describe('indicator ACL editor', () => {
     expect(
       await screen.findByText('未配置 ACL 时，租户内拥有指标浏览权限的用户均可查看该指标。')
     ).toBeInTheDocument()
+  })
+
+  it('requires a second confirmation before clearing the last ACL rule', async () => {
+    indicatorApi.getIndicatorAcl.mockResolvedValue([
+      { principalType: 'DEPT', principalId: 10, includeChildDept: false }
+    ])
+    let confirmTenantOpen!: () => void
+    messageApi.confirm.mockReturnValue(new Promise<void>((resolve) => { confirmTenantOpen = resolve }))
+    renderDialog()
+
+    await screen.findByRole('combobox', { name: '授权部门' })
+    await fireEvent.click(screen.getByRole('button', { name: '删除' }))
+    await fireEvent.click(screen.getByRole('button', { name: '保存 ACL' }))
+
+    await waitFor(() => expect(messageApi.confirm).toHaveBeenCalledWith(
+      '清空全部 ACL 后，该指标将对当前租户内拥有指标浏览权限的用户开放。确认继续吗？'
+    ))
+    expect(indicatorApi.updateIndicatorAcl).not.toHaveBeenCalled()
+    confirmTenantOpen()
+    await waitFor(() => expect(indicatorApi.updateIndicatorAcl).toHaveBeenCalledWith(41, []))
   })
 })
