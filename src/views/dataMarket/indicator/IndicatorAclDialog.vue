@@ -200,8 +200,7 @@ const load = async () => {
         ...rule,
         rowKey: ++rowSequence,
         principalId: principalExists ? rule.principalId : undefined,
-        includeChildDept:
-          rule.principalType === 'DEPT' ? Boolean(rule.includeChildDept) : false,
+        includeChildDept: rule.principalType === 'DEPT' ? Boolean(rule.includeChildDept) : false,
         invalidPrincipal: !principalExists
       }
     })
@@ -291,9 +290,9 @@ watch(
 
 .acl-stale-warning {
   margin: 5px 0 0;
-  color: var(--el-color-danger);
   font-size: 12px;
   line-height: 1.4;
+  color: var(--el-color-danger);
 }
 
 .not-applicable {

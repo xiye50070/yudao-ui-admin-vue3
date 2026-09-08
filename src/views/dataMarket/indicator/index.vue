@@ -86,12 +86,7 @@
             aria-label="筛选标准标签"
             placeholder="全部标签"
           >
-            <el-option
-              v-for="tag in tags"
-              :key="tag.id"
-              :label="tag.name"
-              :value="tag.id"
-            />
+            <el-option v-for="tag in tags" :key="tag.id" :label="tag.name" :value="tag.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="状态">
@@ -145,12 +140,7 @@
           <el-table-column label="标准标签" min-width="240">
             <template #default="{ row }">
               <div v-if="row.tags?.length" class="indicator-tags">
-                <el-tag
-                  v-for="tag in row.tags"
-                  :key="tag.id"
-                  size="small"
-                  effect="light"
-                >
+                <el-tag v-for="tag in row.tags" :key="tag.id" size="small" effect="light">
                   {{ tag.name }}
                 </el-tag>
               </div>
@@ -166,7 +156,9 @@
           </el-table-column>
           <el-table-column label="更新时间" width="168">
             <template #default="{ row }">
-              <span class="update-time">{{ row.updateTime ? formatDate(row.updateTime) : '—' }}</span>
+              <span class="update-time">{{
+                row.updateTime ? formatDate(row.updateTime) : '—'
+              }}</span>
             </template>
           </el-table-column>
           <el-table-column label="操作" width="306" fixed="right" align="right">
@@ -245,18 +237,10 @@
         </header>
         <div class="editor-grid editor-grid--two">
           <el-form-item label="指标编码" prop="indicatorCode">
-            <el-input
-              v-model="form.indicatorCode"
-              maxlength="64"
-              placeholder="例如 GZJG-030"
-            />
+            <el-input v-model="form.indicatorCode" maxlength="64" placeholder="例如 GZJG-030" />
           </el-form-item>
           <el-form-item label="指标名称" prop="indicatorName">
-            <el-input
-              v-model="form.indicatorName"
-              maxlength="256"
-              placeholder="请输入指标名称"
-            />
+            <el-input v-model="form.indicatorName" maxlength="256" placeholder="请输入指标名称" />
           </el-form-item>
           <el-form-item label="指标领域" prop="indicatorDomainId">
             <el-select
@@ -286,19 +270,13 @@
             aria-label="标准标签"
             placeholder="请选择标准标签"
           >
-            <el-option-group
-              v-for="group in tagGroups"
-              :key="group.id"
-              :label="group.name"
-            >
+            <el-option-group v-for="group in tagGroups" :key="group.id" :label="group.name">
               <el-option
                 v-for="tag in group.options"
                 :key="tag.id"
                 :label="tag.name"
                 :value="tag.id"
-                :disabled="
-                  (group.disabled || tag.status !== 0) && !form.tagIds.includes(tag.id!)
-                "
+                :disabled="(group.disabled || tag.status !== 0) && !form.tagIds.includes(tag.id!)"
               />
             </el-option-group>
           </el-select>
@@ -383,9 +361,7 @@
     <template #footer>
       <el-button @click="drawerVisible = false">取消</el-button>
       <el-button
-        v-hasPermi="[
-          form.id ? 'data-market:indicator:update' : 'data-market:indicator:create'
-        ]"
+        v-hasPermi="[form.id ? 'data-market:indicator:update' : 'data-market:indicator:create']"
         type="primary"
         :loading="saving"
         :disabled="detailLoading"
@@ -426,11 +402,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import * as IndicatorApi from '@/api/dataMarket/indicator'
-import type {
-  IndicatorDomainVO,
-  IndicatorPageReq,
-  IndicatorVO
-} from '@/api/dataMarket/indicator'
+import type { IndicatorDomainVO, IndicatorPageReq, IndicatorVO } from '@/api/dataMarket/indicator'
 import type { FilterDimensionVO, TagVO } from '@/api/dataMarket/types'
 import { useMessage } from '@/hooks/web/useMessage'
 import { formatDate } from '@/utils/formatTime'
@@ -686,14 +658,14 @@ onMounted(() => {
 
 .dm-panel__header h2 {
   margin: 0;
-  color: #17233d;
   font-size: 17px;
+  color: #17233d;
 }
 
 .dm-panel__header p {
   margin: 5px 0 0;
-  color: #7a8799;
   font-size: 12px;
+  color: #7a8799;
 }
 
 .indicator-filters {
@@ -761,10 +733,10 @@ onMounted(() => {
 }
 
 .indicator-identity__text code {
-  color: #6f7d90;
   font-size: 11px;
   font-weight: 650;
   letter-spacing: 0.04em;
+  color: #6f7d90;
 }
 
 .indicator-tags {
@@ -774,8 +746,8 @@ onMounted(() => {
 
 .empty-value,
 .update-time {
-  color: #8a96a6;
   font-size: 12px;
+  color: #8a96a6;
 }
 
 .indicator-pagination {
@@ -818,14 +790,14 @@ onMounted(() => {
 
 .editor-section h3 {
   margin: 0;
-  color: #17233d;
   font-size: 15px;
+  color: #17233d;
 }
 
 .editor-section header p {
   margin: 4px 0 0;
-  color: #7a8799;
   font-size: 12px;
+  color: #7a8799;
 }
 
 .editor-grid--two {
@@ -840,13 +812,13 @@ onMounted(() => {
   width: 100%;
 }
 
-@media (max-width: 1200px) {
+@media (width <= 1200px) {
   .indicator-filters {
     grid-template-columns: repeat(2, minmax(190px, 1fr));
   }
 }
 
-@media (max-width: 760px) {
+@media (width <= 760px) {
   .indicator-filters,
   .editor-grid--two {
     grid-template-columns: 1fr;

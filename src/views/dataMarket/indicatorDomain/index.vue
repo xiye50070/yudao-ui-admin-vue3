@@ -329,14 +329,14 @@ onMounted(loadDomains)
 
 .indicator-domain-toolbar h2 {
   margin: 0;
-  color: #17233d;
   font-size: 17px;
+  color: #17233d;
 }
 
 .indicator-domain-toolbar p {
   margin: 5px 0 0;
-  color: #7a8799;
   font-size: 12px;
+  color: #7a8799;
 }
 
 .indicator-domain-filters {
@@ -361,11 +361,11 @@ onMounted(loadDomains)
   display: grid;
   width: 36px;
   height: 36px;
+  font-weight: 700;
   color: #0d9488;
   background: #ecfdf9;
   border-radius: 10px;
   flex: 0 0 36px;
-  font-weight: 700;
   place-items: center;
 }
 
@@ -388,9 +388,9 @@ onMounted(loadDomains)
 }
 
 .domain-code {
-  color: #0b6d66;
   font-size: 12px;
   font-weight: 650;
+  color: #0b6d66;
 }
 
 .drawer-intro {
@@ -434,7 +434,7 @@ onMounted(loadDomains)
   flex: 1;
 }
 
-@media (max-width: 960px) {
+@media (width <= 960px) {
   .indicator-domain-toolbar {
     align-items: stretch;
     flex-direction: column;
