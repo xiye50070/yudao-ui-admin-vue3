@@ -18,6 +18,7 @@ export const getLifecycleExecutionBlockReason = (input: {
 }): string | undefined => {
   const approvedAndWaiting =
     (input.applicationStatus === 'EFFECTUATING' && input.executionStatus === 'PENDING') ||
+    (input.applicationStatus === 'IMPACT_REVIEW' && input.executionStatus === 'PENDING') ||
     (input.applicationStatus === 'IMPACT_REVIEW' && input.executionStatus === 'IMPACT_REVIEW')
   if (approvedAndWaiting) return undefined
   if (['SCHEDULED', 'EXECUTING', 'SUCCEEDED'].includes(input.executionStatus || ''))

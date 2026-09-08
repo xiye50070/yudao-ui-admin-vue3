@@ -106,6 +106,10 @@ const include = [
   'element-plus/es/components/progress/style/css'
 ]
 
-const exclude: string[] = []
+// Vite 8's Rolldown optimizer can evaluate vue3-signature before Vue's shared
+// runtime initializer, leaving helpers such as `isFunction` undefined. Loading
+// a deep-linked BPM page then fails before the app mounts. Let Vite transform
+// this small ESM dependency directly instead of pre-bundling it.
+const exclude: string[] = ['vue3-signature']
 
 export { include, exclude }

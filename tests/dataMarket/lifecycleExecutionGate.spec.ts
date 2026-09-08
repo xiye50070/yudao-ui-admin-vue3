@@ -17,6 +17,15 @@ describe('lifecycle execution gate', () => {
     ).toBeUndefined()
   })
 
+  it('allows the approved deactivation state returned by the backend', () => {
+    expect(
+      getLifecycleExecutionBlockReason({
+        applicationStatus: 'IMPACT_REVIEW',
+        executionStatus: 'PENDING'
+      })
+    ).toBeUndefined()
+  })
+
   it('blocks unapproved applications and lifecycle requests that are already scheduled or executed', () => {
     expect(
       getLifecycleExecutionBlockReason({
